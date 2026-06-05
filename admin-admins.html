@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admins · Admin · NHE KBP</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="js/config.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<nav class="bg-white shadow-sm sticky top-0 z-40">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-between h-16">
+      <a href="index.html" class="flex items-center space-x-2">
+        <span class="text-xl">🐬</span>
+        <div>
+          <div class="text-sm font-bold text-indigo-700 leading-tight">Newport Heights Elementary</div>
+          <div class="text-xs text-gray-500 leading-tight">Korean Bilingual Program</div>
+        </div>
+      </a>
+      <div class="hidden md:flex items-center space-x-1">
+        <a href="announcements.html" class="nav-link px-3 py-2">Announcements</a>
+        <a href="calendar.html" class="nav-link px-3 py-2">Calendar</a>
+        <a href="directory.html" class="nav-link px-3 py-2">Directory</a>
+        <a href="profile.html" id="nav-profile" class="nav-link px-3 py-2 hidden">Profile</a>
+        <button id="nav-logout" onclick="signOut()" class="nav-link px-3 py-2 hidden">Sign Out</button>
+        <a href="login.html" id="nav-login" class="btn-primary ml-2 hidden">Sign In</a>
+        <a href="admin-members.html" id="nav-admin" class="hidden" style="margin-left:0.5rem;padding:0.35rem 0.875rem;font-size:0.8125rem;font-weight:700;color:#3730a3;background:#e0e7ff;border:2px solid #818cf8;border-radius:0.5rem;text-decoration:none;white-space:nowrap">&#9881; Admin</a>
+      </div>
+      <div class="md:hidden flex items-center">
+        <button onclick="toggleMobileMenu()" class="p-2 text-gray-500"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+      </div>
+    </div>
+  </div>
+  <div id="mobile-menu" class="hidden md:hidden border-t bg-white px-4 py-3 space-y-1">
+    <a href="index.html" class="block py-2 text-sm text-gray-600">Home</a>
+    <a href="directory.html" class="block py-2 text-sm text-gray-600">Directory</a>
+    <a href="calendar.html" class="block py-2 text-sm text-gray-600">Calendar</a>
+    <a href="admin-members.html" id="mob-admin" class="block py-2 text-sm text-indigo-700 font-medium hidden">Admin</a>
+    <a href="profile.html" id="mob-profile" class="block py-2 text-sm text-gray-600 hidden">Profile</a>
+    <button id="mob-logout" onclick="signOut()" class="block py-2 text-sm text-gray-600 hidden text-left w-full">Sign Out</button>
+    <a href="login.html" id="mob-login" class="block py-2 text-sm text-indigo-600 font-medium hidden">Sign In</a>
+  </div>
+</nav>
+<div id="admin-subnav"></div>
+
+<div class="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+  <h1 class="text-2xl font-bold text-gray-900 mb-6">🔑 Admins</h1>
+  <div class="card mb-6">
+    <h3 class="text-sm font-semibold text-gray-700 mb-3">Add Admin by Email</h3>
+    <p class="text-xs text-gray-500 mb-3">The person must have already signed up on the site first.</p>
+    <div class="flex gap-2">
+      <input id="new-email" type="email" class="form-input flex-1" placeholder="parent@email.com" />
+      <button onclick="addAdmin()" class="btn-primary shrink-0">Add Admin</button>
+    </div>
+  </div>
+  <div class="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+    <table class="data-table min-w-full">
+      <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Action</th></tr></thead>
+      <tbody id="admins-tbody"><tr><td colspan="4" class="text-center py-8 text-gray-400">Loading…</td></tr></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script src="js/auth.js"></script>
+<script src="js/admin-common.js"></script>
+<script>
+renderAdminNav('admins');
+
+initAuth({
+  requireAuth: true, requireAdmin: true,
+  onReady: () => load()
+});
+
+async function load() {
+  const snap = await db.collection('users').where('isAdmin', '==', true).get();
+  const tbody = document.getElementById('admins-tbody');
+  if (snap.empty) { tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-gray-400">No admins.</td></tr>`; return; }
+  tbody.innerHTML = snap.docs.map(d => {
+    const u = d.data();
+    const role = u.isSiteAdmin ? 'Site Admin' : 'Admin';
+    const roleColor = u.isSiteAdmin ? 'bg-purple-100 text-purple-700' : 'bg-indigo-100 text-indigo-700';
+    const canRemove = !u.isSiteAdmin;
+    return `<tr>
+      <td class="font-medium">${u.displayName || '—'}</td>
+      <td class="text-sm text-gray-600">${u.email}</td>
+      <td><span class="px-2 py-0.5 text-xs rounded-full font-medium ${roleColor}">${role}</span></td>
+      <td>${canRemove ? `<button onclick="removeAdmin('${d.id}','${(u.displayName||u.email).replace(/'/g,'&#39;')}')" class="text-xs text-red-500 hover:underline">Remove</button>` : '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function addAdmin() {
+  const email = document.getElementById('new-email').value.trim().toLowerCase();
+  if (!email) { showToast('Enter an email.', 'error'); return; }
+  const snap = await db.collection('users').where('email', '==', email).get();
+  if (snap.empty) { showToast('No account found. They must sign up first.', 'error'); return; }
+  await snap.docs[0].ref.update({ isAdmin: true });
+  showToast(`${email} is now an admin.`);
+  document.getElementById('new-email').value = '';
+  load();
+}
+
+async function removeAdmin(uid, name) {
+  if (!confirm(`Remove admin role from ${name}?`)) return;
+  await db.collection('users').doc(uid).update({ isAdmin: false });
+  showToast(`${name} is no longer an admin.`);
+  load();
+}
+
+document.getElementById('new-email').addEventListener('keydown', e => { if (e.key === 'Enter') addAdmin(); });
+</script>
+</body>
+</html>

@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Members · Admin · NHE KBP</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="js/config.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<nav class="bg-white shadow-sm sticky top-0 z-40">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-between h-16">
+      <a href="index.html" class="flex items-center space-x-2">
+        <span class="text-xl">🐬</span>
+        <div>
+          <div class="text-sm font-bold text-indigo-700 leading-tight">Newport Heights Elementary</div>
+          <div class="text-xs text-gray-500 leading-tight">Korean Bilingual Program</div>
+        </div>
+      </a>
+      <div class="hidden md:flex items-center space-x-1">
+        <a href="announcements.html" class="nav-link px-3 py-2">Announcements</a>
+        <a href="calendar.html" class="nav-link px-3 py-2">Calendar</a>
+        <a href="directory.html" class="nav-link px-3 py-2">Directory</a>
+        <a href="profile.html" id="nav-profile" class="nav-link px-3 py-2 hidden">Profile</a>
+        <div class="relative">
+          <button id="nav-notif" onclick="openNotifications()" class="relative p-2 text-gray-500 hover:text-indigo-600 hidden">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+            <span id="notif-badge" class="hidden absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">0</span>
+          </button>
+          <div id="notif-panel" class="hidden absolute right-0 top-10 w-80 bg-white border rounded-xl shadow-xl max-h-96 overflow-y-auto z-50"></div>
+        </div>
+        <button id="nav-logout" onclick="signOut()" class="nav-link px-3 py-2 hidden">Sign Out</button>
+        <a href="login.html" id="nav-login" class="btn-primary ml-2 hidden">Sign In</a>
+        <a href="admin-members.html" id="nav-admin" class="hidden" style="margin-left:0.5rem;padding:0.35rem 0.875rem;font-size:0.8125rem;font-weight:700;color:#3730a3;background:#e0e7ff;border:2px solid #818cf8;border-radius:0.5rem;text-decoration:none;white-space:nowrap">⚙ Admin</a>
+      </div>
+      <div class="md:hidden flex items-center">
+        <button onclick="toggleMobileMenu()" class="p-2 text-gray-500"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+      </div>
+    </div>
+  </div>
+  <div id="mobile-menu" class="hidden md:hidden border-t bg-white px-4 py-3 space-y-1">
+    <a href="announcements.html" class="block py-2 text-sm text-gray-600">Announcements</a>
+    <a href="calendar.html" class="block py-2 text-sm text-gray-600">Calendar</a>
+    <a href="directory.html" class="block py-2 text-sm text-gray-600">Directory</a>
+    <a href="profile.html" id="mob-profile" class="block py-2 text-sm text-gray-600 hidden">Profile</a>
+    <button id="mob-logout" onclick="signOut()" class="block py-2 text-sm text-gray-600 hidden text-left w-full">Sign Out</button>
+    <a href="login.html" id="mob-login" class="block py-2 text-sm text-indigo-600 font-medium hidden">Sign In</a>
+    <a href="admin-members.html" id="mob-admin" class="hidden block py-2 text-sm font-bold text-indigo-700">⚙ Admin</a>
+  </div>
+</nav>
+<div id="admin-subnav"></div>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+  <!-- Pending approvals banner -->
+  <div id="pending-banner" style="display:none" class="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between gap-4">
+    <div>
+      <p class="font-semibold text-amber-800">⏳ <span id="pending-count">0</span> pending approval(s)</p>
+      <p class="text-sm text-amber-700 mt-0.5">New families are waiting for access.</p>
+    </div>
+    <button onclick="scrollToPending()" class="btn-primary btn-sm shrink-0">Review</button>
+  </div>
+
+  <div class="flex flex-col gap-4 mb-6">
+    <h1 class="text-2xl font-bold text-gray-900">👥 Members</h1>
+    <!-- Filters -->
+    <div class="flex flex-wrap gap-2 items-end">
+      <div>
+        <label class="form-label text-xs">Name / Email</label>
+        <input id="member-search" type="text" class="form-input" placeholder="Search…" oninput="filterMembers()" style="width:180px" />
+      </div>
+      <div>
+        <label class="form-label text-xs">Grade</label>
+        <select id="filter-grade" class="form-select" onchange="filterMembers()" style="width:150px">
+          <option value="">All grades</option>
+          <option>Kindergarten</option><option>1st Grade</option><option>2nd Grade</option>
+          <option>3rd Grade</option><option>4th Grade</option><option>5th Grade</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label text-xs">Teacher</label>
+        <select id="filter-teacher" class="form-select" onchange="filterMembers()" style="width:170px">
+          <option value="">All teachers</option>
+        </select>
+      </div>
+      <div class="flex gap-2 mt-auto flex-wrap">
+        <button onclick="copyEmails()" class="btn-primary btn-sm">📋 Copy Emails</button>
+        <button onclick="openAddMemberModal()" class="btn-secondary btn-sm">+ Add Member</button>
+        <label class="btn-secondary btn-sm cursor-pointer">⬆ Import CSV<input type="file" accept=".csv" class="hidden" onchange="importMembersCSV(this)" /></label>
+        <button onclick="exportMembers()" class="btn-secondary btn-sm">⬇ Export CSV</button>
+      </div>
+    </div>
+    <p id="filter-summary" class="text-xs text-gray-500"></p>
+    <p class="text-xs text-gray-400">CSV import columns: Name, Email, Phone, KakaoTalk, City — one per row, no header. Existing emails are skipped.</p>
+  </div>
+  <div class="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+    <table class="data-table min-w-full">
+      <thead>
+        <tr><th>Name</th><th>Email</th><th>Phone</th><th>KakaoTalk</th><th>City</th><th>Students</th><th>Teacher(s)</th><th>Action</th></tr>
+      </thead>
+      <tbody id="members-tbody">
+        <tr><td colspan="8" class="text-center py-12 text-gray-400">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pending approvals section -->
+  <div id="pending-section" class="mt-10">
+    <h2 class="text-lg font-bold text-gray-900 mb-4">⏳ Pending Approvals</h2>
+    <div id="pending-list" class="space-y-3">
+      <p class="text-sm text-gray-400">Loading…</p>
+    </div>
+  </div>
+
+  </div>
+</div>
+
+<!-- Add Member Modal -->
+<div id="add-member-modal" style="display:none" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-y-auto max-h-[90vh]">
+    <div class="p-6">
+      <h3 class="text-lg font-bold text-gray-900 mb-4">Add Member</h3>
+      <div class="space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div class="col-span-2">
+            <label class="form-label">Name <span class="text-red-500">*</span></label>
+            <input id="am-name" type="text" class="form-input" placeholder="Jane Kim" />
+          </div>
+          <div class="col-span-2">
+            <label class="form-label">Email <span class="text-red-500">*</span></label>
+            <input id="am-email" type="email" class="form-input" placeholder="jane@email.com" />
+          </div>
+          <div>
+            <label class="form-label">Phone</label>
+            <input id="am-phone" type="tel" class="form-input" placeholder="(425) 555-1234" />
+          </div>
+          <div>
+            <label class="form-label">City</label>
+            <input id="am-city" type="text" class="form-input" placeholder="Bellevue" />
+          </div>
+          <div class="col-span-2">
+            <label class="form-label">KakaoTalk ID</label>
+            <input id="am-kakao" type="text" class="form-input" placeholder="kakao_id" />
+          </div>
+        </div>
+
+        <!-- Students -->
+        <div class="border-t pt-3 mt-1">
+          <div class="flex items-center justify-between mb-2">
+            <p class="text-sm font-semibold text-gray-700">Students</p>
+            <button type="button" onclick="addMemberChild()" class="btn-secondary btn-sm text-xs">+ Add Student</button>
+          </div>
+          <div id="am-children" class="space-y-3"></div>
+        </div>
+
+        <p class="text-xs text-gray-400">Member is added as pre-approved. After saving, you'll get an invite message to send them.</p>
+      </div>
+      <div class="flex justify-end gap-3 mt-5">
+        <button onclick="closeAddMemberModal()" class="btn-secondary">Cancel</button>
+        <button onclick="saveNewMember()" class="btn-primary">Add Member</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Invite Modal -->
+<div id="invite-modal" style="display:none" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6">
+    <h3 class="text-lg font-bold text-gray-900 mb-1">📧 Send Invite</h3>
+    <p class="text-sm text-gray-500 mb-3">Copy and send this message to the new member so they can create their account:</p>
+    <textarea id="invite-message" class="form-input w-full text-xs font-mono" rows="9" readonly></textarea>
+    <div class="flex flex-wrap gap-2 mt-4">
+      <a id="invite-mailto" href="#" class="btn-primary btn-sm">Open in Email App</a>
+      <button onclick="copyInviteMessage()" class="btn-secondary btn-sm">Copy Message</button>
+      <button onclick="closeInviteModal()" class="btn-secondary btn-sm ml-auto">Close</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/auth.js"></script>
+<script src="js/admin-common.js"></script>
+<script>
+renderAdminNav('members');
+let allMembers = [];
+let filteredMembers = [];
+let addMemberChildCount = 0;
+let addMemberTeachers = [];
+
+initAuth({
+  requireAuth: true, requireAdmin: true,
+  onReady: () => { loadMembers(); loadPending(); }
+});
+
+async function loadMembers() {
+  const [usersSnap, childrenSnap] = await Promise.all([
+    db.collection('users').get(),
+    db.collection('children').get()
+  ]);
+  const userMap = {};
+  usersSnap.docs.forEach(d => { userMap[d.id] = d.data(); });
+  const childMap = {};
+  childrenSnap.docs.forEach(d => { childMap[d.id] = d.data(); });
+
+  allMembers = usersSnap.docs.map(d => {
+    const u = d.data();
+    return { uid: d.id, ...u, children: (u.childIds || []).map(id => childMap[id]).filter(Boolean) };
+  }).sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''));
+
+  // Populate member teacher filter dropdown (once)
+  if (document.getElementById('filter-teacher').options.length <= 1) {
+    try {
+      const snap = await db.collection('config').doc('teachers').get();
+      const teachers = snap.exists ? (snap.data().list || []) : [];
+      const sel = document.getElementById('filter-teacher');
+      teachers.forEach(t => {
+        const o = document.createElement('option');
+        o.value = t; o.textContent = t;
+        sel.appendChild(o);
+      });
+    } catch (e) {}
+  }
+
+  filterMembers();
+}
+
+function filterMembers() {
+  const q       = document.getElementById('member-search').value.toLowerCase();
+  const grade   = document.getElementById('filter-grade').value;
+  const teacher = document.getElementById('filter-teacher').value;
+
+  filteredMembers = allMembers.filter(m => {
+    const nameMatch    = !q || (m.displayName || '').toLowerCase().includes(q) || (m.email || '').toLowerCase().includes(q);
+    const gradeMatch   = !grade   || (m.children || []).some(c => c.grade === grade);
+    const teacherMatch = !teacher || (m.children || []).some(c => c.teacher === teacher);
+    return nameMatch && gradeMatch && teacherMatch;
+  });
+
+  const summary = document.getElementById('filter-summary');
+  const active = [grade, teacher].filter(Boolean);
+  summary.textContent = active.length
+    ? `${filteredMembers.length} of ${allMembers.length} members · filtered by ${active.join(', ')}`
+    : `${filteredMembers.length} members`;
+
+  renderMembers(filteredMembers);
+}
+
+async function copyEmails() {
+  const emails = filteredMembers.map(m => m.email).filter(Boolean).join(', ');
+  if (!emails) { showToast('No emails to copy.', 'error'); return; }
+  try {
+    await navigator.clipboard.writeText(emails);
+    showToast(`${filteredMembers.length} email(s) copied — paste into BCC!`);
+  } catch (e) {
+    // Fallback for older mobile browsers
+    const ta = document.createElement('textarea');
+    ta.value = emails;
+    ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    document.execCommand('copy');
+    ta.remove();
+    showToast(`${filteredMembers.length} email(s) copied — paste into BCC!`);
+  }
+}
+
+function renderMembers(list) {
+  const tbody = document.getElementById('members-tbody');
+  if (!list.length) { tbody.innerHTML = `<tr><td colspan="8" class="text-center py-12 text-gray-400">No members found.</td></tr>`; return; }
+  tbody.innerHTML = list.map(m => {
+    const kids = (m.children || []).map(c => `${c.firstName} ${c.lastName}`.trim() + ` (${c.grade})`).join(', ') || '—';
+    const teachers = [...new Set((m.children || []).map(c => c.teacher).filter(Boolean))].join(', ') || '—';
+    return `<tr>
+      <td class="font-medium">${m.displayName || '—'}</td>
+      <td><a href="mailto:${m.email}" class="text-indigo-600 hover:underline text-xs">${m.email}</a></td>
+      <td class="text-xs">${m.phone || '—'}</td>
+      <td class="text-xs">${m.kakao || '—'}</td>
+      <td class="text-xs">${m.city || '—'}</td>
+      <td class="text-xs">${kids}</td>
+      <td class="text-xs">${teachers}</td>
+      <td><button onclick="removeMember('${m.uid}','${(m.displayName||m.email).replace(/'/g, '&#39;')}')" class="text-xs text-red-500 hover:underline">Remove</button></td>
+    </tr>`;
+  }).join('');
+}
+
+async function removeMember(uid, name) {
+  if (!confirm(`Remove ${name}? This deletes their profile data.`)) return;
+  const kids = await db.collection('children').where('parentUids', 'array-contains', uid).get();
+  for (const d of kids.docs) await d.ref.update({ parentUids: firebase.firestore.FieldValue.arrayRemove(uid) });
+  const notifs = await db.collection('notifications').doc(uid).collection('items').get();
+  for (const n of notifs.docs) await n.ref.delete();
+  await db.collection('users').doc(uid).delete();
+  showToast(`${name} removed.`);
+  loadMembers();
+}
+
+async function loadPending() {
+  const snap = await db.collection('users').where('approved', '==', false).get();
+  const banner = document.getElementById('pending-banner');
+  const list   = document.getElementById('pending-list');
+
+  if (snap.empty) {
+    banner.style.display = 'none';
+    list.innerHTML = `<p class="text-sm text-gray-400">No pending approvals.</p>`;
+    return;
+  }
+
+  document.getElementById('pending-count').textContent = snap.size;
+  banner.style.display = 'flex';
+
+  list.innerHTML = snap.docs.map(d => {
+    const u = d.data();
+    return `
+      <div class="bg-white border border-amber-200 rounded-xl px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <p class="font-semibold text-gray-900">${u.displayName || '—'}</p>
+          <p class="text-sm text-gray-500">${u.email}</p>
+          <p class="text-xs text-gray-400 mt-0.5">Signed up ${u.createdAt ? formatDate(u.createdAt) : ''}</p>
+        </div>
+        <div class="flex gap-2 shrink-0">
+          <button onclick="approveUser('${d.id}','${(u.displayName||u.email).replace(/'/g,'&#39;')}')"
+            class="btn-primary btn-sm">✓ Approve</button>
+          <button onclick="denyUser('${d.id}','${(u.displayName||u.email).replace(/'/g,'&#39;')}')"
+            class="btn-danger btn-sm">✕ Deny</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function approveUser(uid, name) {
+  await db.collection('users').doc(uid).update({ approved: true });
+  showToast(`${name} approved! They now have full access.`);
+  loadPending();
+  loadMembers();
+}
+
+async function denyUser(uid, name) {
+  if (!confirm(`Deny and delete ${name}'s account?`)) return;
+  await db.collection('users').doc(uid).delete();
+  showToast(`${name}'s request denied and account removed.`);
+  loadPending();
+}
+
+function scrollToPending() {
+  document.getElementById('pending-section').scrollIntoView({ behavior: 'smooth' });
+}
+
+function exportMembers() {
+  const rows = [['Name','Email','Phone','KakaoTalk','City','Students','Joined']];
+  filteredMembers.forEach(m => {
+    const kids = (m.children || []).map(c => `${c.firstName} ${c.lastName} (${c.grade})`).join('; ');
+    rows.push([m.displayName||'', m.email||'', m.phone||'', m.kakao||'', m.city||'', kids, m.createdAt ? formatDate(m.createdAt) : '']);
+  });
+  downloadCSV(rows, 'kbp-members.csv');
+}
+
+// ── Add Member ──────────────────────────────────────────────────
+
+async function openAddMemberModal() {
+  ['am-name','am-email','am-phone','am-city','am-kakao'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('am-children').innerHTML = '';
+  addMemberChildCount = 0;
+  addMemberTeachers = await getTeacherList();
+  addMemberChild();
+  document.getElementById('add-member-modal').style.display = 'flex';
+}
+function closeAddMemberModal() { document.getElementById('add-member-modal').style.display = 'none'; }
+
+function addMemberChild() {
+  const n = addMemberChildCount++;
+  const gradeOpts = ['Kindergarten','1st Grade','2nd Grade','3rd Grade','4th Grade','5th Grade']
+    .map(g => `<option>${g}</option>`).join('');
+  const teacherOpts = addMemberTeachers.map(t => `<option value="${t}">${t}</option>`).join('');
+  const div = document.createElement('div');
+  div.id = `amc-${n}`;
+  div.className = 'bg-gray-50 rounded-lg p-3 space-y-2 relative';
+  div.innerHTML = `
+    <button type="button" onclick="removeMemberChild(${n})"
+      class="absolute top-2 right-2 text-gray-400 hover:text-red-500 text-xs" title="Remove">✕</button>
+    <div class="grid grid-cols-2 gap-2">
+      <div><label class="form-label text-xs">First Name *</label>
+        <input type="text" id="amc-first-${n}" class="form-input text-sm" placeholder="First name" /></div>
+      <div><label class="form-label text-xs">Last Name *</label>
+        <input type="text" id="amc-last-${n}" class="form-input text-sm" placeholder="Last name" /></div>
+    </div>
+    <div class="grid grid-cols-2 gap-2">
+      <div><label class="form-label text-xs">Grade *</label>
+        <select id="amc-grade-${n}" class="form-select text-sm">
+          <option value="">Grade…</option>${gradeOpts}</select></div>
+      <div><label class="form-label text-xs">Teacher</label>
+        <select id="amc-teacher-${n}" class="form-select text-sm">
+          <option value="">Teacher…</option>${teacherOpts}</select></div>
+    </div>
+    <div><label class="form-label text-xs">Relationship *</label>
+      <input type="text" id="amc-rel-${n}" class="form-input text-sm" placeholder="e.g. Mom, Dad, Grandparent" /></div>`;
+  document.getElementById('am-children').appendChild(div);
+}
+
+function removeMemberChild(n) { document.getElementById(`amc-${n}`).remove(); }
+
+async function saveNewMember() {
+  const name  = document.getElementById('am-name').value.trim();
+  const email = document.getElementById('am-email').value.trim().toLowerCase();
+  if (!name)  { showToast('Name is required.', 'error'); return; }
+  if (!email) { showToast('Email is required.', 'error'); return; }
+
+  const exists = allMembers.some(m => (m.email || '').toLowerCase() === email);
+  if (exists) { showToast('A member with that email already exists.', 'error'); return; }
+
+  // Collect children
+  const childrenData = [];
+  for (const el of Array.from(document.getElementById('am-children').children)) {
+    const n = el.id.replace('amc-', '');
+    const first = document.getElementById(`amc-first-${n}`).value.trim();
+    const last  = document.getElementById(`amc-last-${n}`).value.trim();
+    const grade = document.getElementById(`amc-grade-${n}`).value;
+    const teacher = document.getElementById(`amc-teacher-${n}`).value.trim();
+    const rel = document.getElementById(`amc-rel-${n}`).value.trim();
+    if (!first && !last && !grade) continue; // skip blank rows
+    if (!first || !last) { showToast('Enter first and last name for each student.', 'error'); return; }
+    if (!grade) { showToast('Select a grade for each student.', 'error'); return; }
+    if (!rel)   { showToast('Enter your relationship to each student.', 'error'); return; }
+    childrenData.push({ first, last, grade, teacher, relationship: rel });
+  }
+
+  const newRef = db.collection('users').doc();
+  const uid = newRef.id;
+  const childIds = [];
+  for (const c of childrenData) {
+    const ref = await db.collection('children').add({
+      firstName: c.first, lastName: c.last, grade: c.grade,
+      teacher: c.teacher, relationship: c.relationship,
+      parentUids: [uid],
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    childIds.push(ref.id);
+  }
+
+  await newRef.set({
+    displayName: name, email,
+    phone: document.getElementById('am-phone').value.trim(),
+    city:  document.getElementById('am-city').value.trim(),
+    kakao: document.getElementById('am-kakao').value.trim(),
+    isAdmin: false, isSiteAdmin: false,
+    privacy: { name: true, email: false, phone: false, kakao: false, city: true },
+    childIds, approved: true, adminAdded: true,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+  });
+
+  closeAddMemberModal();
+  loadMembers();
+  showInviteModal(name, email);
+}
+
+// ── Invite modal ────────────────────────────────────────────────
+
+function showInviteModal(name, email) {
+  const base = window.location.href.replace(/\/[^/]*$/, '/');
+  const url  = base + 'login.html';
+  const msg  = `Hi ${name},\n\nYou've been added to the Newport Heights Elementary Korean Bilingual Program family community directory!\n\nPlease sign up at:\n${url}\n\nUse this email address (${email}) to create your account — no approval wait required.\n\nWelcome to the KBP community!`;
+  document.getElementById('invite-message').value = msg;
+  document.getElementById('invite-mailto').href =
+    `mailto:${email}?subject=${encodeURIComponent('Join the NHE KBP Family Community')}&body=${encodeURIComponent(msg)}`;
+  document.getElementById('invite-modal').style.display = 'flex';
+}
+function closeInviteModal() { document.getElementById('invite-modal').style.display = 'none'; }
+async function copyInviteMessage() {
+  const text = document.getElementById('invite-message').value;
+  try { await navigator.clipboard.writeText(text); } catch (e) {
+    const ta = document.getElementById('invite-message'); ta.select(); document.execCommand('copy');
+  }
+  showToast('Invite message copied!');
+}
+
+// ── Import Members CSV ──────────────────────────────────────────
+
+async function importMembersCSV(input) {
+  const text = await input.files[0].text();
+  const existingEmails = new Set(allMembers.map(m => (m.email || '').toLowerCase()));
+  let added = 0, skipped = 0;
+  for (const line of text.trim().split('\n').filter(Boolean)) {
+    const [name='', email='', phone='', kakao='', city=''] = line.split(',').map(s => s.trim().replace(/^"|"$/g, ''));
+    const emailLower = email.toLowerCase();
+    if (!name || !emailLower) continue;
+    if (existingEmails.has(emailLower)) { skipped++; continue; }
+    await db.collection('users').doc(db.collection('users').doc().id).set({
+      displayName: name, email: emailLower, phone, kakao, city,
+      isAdmin: false, isSiteAdmin: false,
+      privacy: { name: true, email: false, phone: false, kakao: false, city: true },
+      childIds: [], approved: true, adminAdded: true,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    existingEmails.add(emailLower);
+    added++;
+  }
+  showToast(`Imported ${added} member${added !== 1 ? 's' : ''}${skipped ? `, skipped ${skipped} (already exist)` : ''}.`);
+  input.value = '';
+  loadMembers();
+}
+
+
+</script>
+</body>
+</html>

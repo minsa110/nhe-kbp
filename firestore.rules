@@ -1,0 +1,89 @@
+// COPY THIS INTO: Firebase Console → Firestore Database → Rules tab → Publish
+// ──────────────────────────────────────────────────────────────────────────────
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuth() { return request.auth != null; }
+    function isOwner(uid) { return request.auth.uid == uid; }
+    function isApproved() {
+      return isAuth() && (
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('approved', true) != false
+      );
+    }
+    function isAdmin() {
+      return isAuth() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isAdmin', false) == true;
+    }
+    function isSiteAdmin() {
+      return isAuth() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isSiteAdmin', false) == true;
+    }
+
+    // Users: any signed-in parent can read (client enforces privacy display);
+    //        only owner can create their own doc; owner or admin can update.
+    match /users/{uid} {
+      allow read:   if isOwner(uid) || isApproved()
+                    || (isAuth() && resource.data.get('adminAdded', false) == true
+                        && resource.data.email == request.auth.token.email);
+      allow create: if isOwner(uid) || isAdmin();
+      allow update: if isOwner(uid) || isAdmin();
+      allow delete: if isOwner(uid) || isAdmin()
+                    || (isAuth() && resource.data.get('adminAdded', false) == true
+                        && resource.data.email == request.auth.token.email);
+    }
+
+    // Children: only approved parents can read / create;
+    match /children/{childId} {
+      allow read:   if isApproved();
+      allow create: if isAuth(); // isApproved() fails during signup before the user doc exists
+      allow update: if isAuth() && (
+        request.auth.uid in resource.data.parentUids || isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Link requests: any signed-in user can create;
+    //                requestor and existing parents (and admin) can read/update.
+    match /linkRequests/{reqId} {
+      allow create: if isAuth();
+      allow read: if isAuth() && (
+        request.auth.uid == resource.data.requestingUid ||
+        request.auth.uid in
+          get(/databases/$(database)/documents/children/$(resource.data.childId)).data.parentUids ||
+        isAdmin()
+      );
+      allow update: if isAuth() && (
+        request.auth.uid in
+          get(/databases/$(database)/documents/children/$(resource.data.childId)).data.parentUids ||
+        isAdmin()
+      );
+    }
+
+    // Config (teacher list, etc.): anyone can read; only admins can write.
+    match /config/{doc} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Announcements: logged-in members see all; visitors only see public ones.
+    match /announcements/{id} {
+      allow read: if resource.data.get('public', false) == true || isAuth();
+      allow write: if isAdmin();
+    }
+
+    // Events: logged-in members see all; visitors only see public ones.
+    match /events/{id} {
+      allow read: if resource.data.get('public', false) == true || isAuth();
+      allow write: if isAdmin();
+    }
+
+    // Notifications: only the owner can read/update their notifications;
+    //                any signed-in user can create (to notify another parent).
+    match /notifications/{uid}/{document=**} {
+      allow read, update: if isOwner(uid);
+      allow create:       if isAuth();
+      allow delete:       if isOwner(uid);
+    }
+  }
+}

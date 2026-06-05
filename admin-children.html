@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Children · Admin · NHE KBP</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="js/config.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<nav class="bg-white shadow-sm sticky top-0 z-40">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-between h-16">
+      <a href="index.html" class="flex items-center space-x-2">
+        <span class="text-xl">🐬</span>
+        <div>
+          <div class="text-sm font-bold text-indigo-700 leading-tight">Newport Heights Elementary</div>
+          <div class="text-xs text-gray-500 leading-tight">Korean Bilingual Program</div>
+        </div>
+      </a>
+      <div class="hidden md:flex items-center space-x-1">
+        <a href="announcements.html" class="nav-link px-3 py-2">Announcements</a>
+        <a href="calendar.html" class="nav-link px-3 py-2">Calendar</a>
+        <a href="directory.html" class="nav-link px-3 py-2">Directory</a>
+        <a href="profile.html" id="nav-profile" class="nav-link px-3 py-2 hidden">Profile</a>
+        <div class="relative">
+          <button id="nav-notif" onclick="openNotifications()" class="relative p-2 text-gray-500 hover:text-indigo-600 hidden">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+            <span id="notif-badge" class="hidden absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">0</span>
+          </button>
+          <div id="notif-panel" class="hidden absolute right-0 top-10 w-80 bg-white border rounded-xl shadow-xl max-h-96 overflow-y-auto z-50"></div>
+        </div>
+        <button id="nav-logout" onclick="signOut()" class="nav-link px-3 py-2 hidden">Sign Out</button>
+        <a href="login.html" id="nav-login" class="btn-primary ml-2 hidden">Sign In</a>
+        <a href="admin-members.html" id="nav-admin" class="hidden" style="margin-left:0.5rem;padding:0.35rem 0.875rem;font-size:0.8125rem;font-weight:700;color:#3730a3;background:#e0e7ff;border:2px solid #818cf8;border-radius:0.5rem;text-decoration:none;white-space:nowrap">&#9881; Admin</a>
+      </div>
+      <div class="md:hidden flex items-center">
+        <button onclick="toggleMobileMenu()" class="p-2 text-gray-500"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+      </div>
+    </div>
+  </div>
+  <div id="mobile-menu" class="hidden md:hidden border-t bg-white px-4 py-3 space-y-1">
+    <a href="announcements.html" class="block py-2 text-sm text-gray-600">Announcements</a>
+    <a href="calendar.html" class="block py-2 text-sm text-gray-600">Calendar</a>
+    <a href="directory.html" class="block py-2 text-sm text-gray-600">Directory</a>
+    <a href="profile.html" id="mob-profile" class="block py-2 text-sm text-gray-600 hidden">Profile</a>
+    <button id="mob-logout" onclick="signOut()" class="block py-2 text-sm text-gray-600 hidden text-left w-full">Sign Out</button>
+    <a href="login.html" id="mob-login" class="block py-2 text-sm text-indigo-600 font-medium hidden">Sign In</a>
+    <a href="admin-members.html" id="mob-admin" class="hidden block py-2 text-sm font-bold text-indigo-700">&#9881; Admin</a>
+  </div>
+</nav>
+<div id="admin-subnav"></div>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div class="flex flex-col sm:flex-row justify-between gap-3 mb-6">
+    <h1 class="text-2xl font-bold text-gray-900">🎒 Children</h1>
+    <div class="flex flex-wrap gap-2">
+      <input id="child-search" type="text" class="form-input" placeholder="Search…" oninput="filterChildren()" style="width:180px" />
+      <button onclick="openModal()" class="btn-primary btn-sm">+ Add Child</button>
+      <label class="btn-secondary btn-sm cursor-pointer">⬆ Import CSV<input type="file" accept=".csv" class="hidden" onchange="importCSV(this)" /></label>
+      <button onclick="exportChildren()" class="btn-secondary btn-sm">⬇ Export CSV</button>
+    </div>
+  </div>
+  <p class="text-xs text-gray-400 mb-3">CSV import: First Name, Last Name, Grade, Teacher — one per row, no header row</p>
+
+  <!-- Bulk action bar -->
+  <div id="bulk-bar" style="display:none" class="bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-3 mb-3 flex flex-wrap items-center gap-3">
+    <span id="bulk-count" class="text-sm font-semibold text-indigo-800 shrink-0"></span>
+    <select id="bulk-grade" class="form-select text-sm" style="width:auto">
+      <option value="">Grade: no change</option>
+      <option>Kindergarten</option><option>1st Grade</option><option>2nd Grade</option>
+      <option>3rd Grade</option><option>4th Grade</option><option>5th Grade</option>
+    </select>
+    <select id="bulk-teacher" class="form-select text-sm" style="width:auto">
+      <option value="">Teacher: no change</option>
+    </select>
+    <button onclick="applyBulkUpdate()" class="btn-primary btn-sm">Apply to Selected</button>
+    <button onclick="clearSelection()" class="btn-secondary btn-sm">Clear selection</button>
+  </div>
+
+  <div class="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+    <table class="data-table min-w-full">
+      <thead><tr>
+        <th class="w-10"><input type="checkbox" id="select-all" onchange="toggleSelectAll(this)" class="cursor-pointer" /></th>
+        <th>First Name</th><th>Last Name</th><th>Grade</th><th>Teacher</th><th>Parents</th><th>Actions</th>
+      </tr></thead>
+      <tbody id="children-tbody"><tr><td colspan="7" class="text-center py-12 text-gray-400">Loading…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal -->
+<div id="modal" style="display:none" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
+    <h3 id="modal-title" class="text-lg font-bold text-gray-900 mb-4">Add Child</h3>
+    <div class="space-y-3">
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="form-label">First Name *</label><input id="c-first" class="form-input" /></div>
+        <div><label class="form-label">Last Name *</label><input id="c-last" class="form-input" /></div>
+      </div>
+      <div><label class="form-label">Grade *</label>
+        <select id="c-grade" class="form-select">
+          <option value="">Select…</option>
+          <option>Kindergarten</option><option>1st Grade</option><option>2nd Grade</option>
+          <option>3rd Grade</option><option>4th Grade</option><option>5th Grade</option>
+        </select>
+      </div>
+      <div><label class="form-label">Teacher</label><select id="c-teacher" class="form-select"><option value="">Select teacher…</option></select></div>
+    </div>
+    <div class="flex justify-end gap-3 mt-5">
+      <button onclick="closeModal()" class="btn-secondary">Cancel</button>
+      <button onclick="saveChild()" class="btn-primary">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/auth.js"></script>
+<script src="js/admin-common.js"></script>
+<script>
+renderAdminNav('children');
+let allChildren = [];
+let editingId = null;
+let selectedIds = new Set();
+
+initAuth({
+  requireAuth: true, requireAdmin: true,
+  onReady: () => loadChildren()
+});
+
+async function loadChildren() {
+  const [usersSnap, childrenSnap] = await Promise.all([db.collection('users').get(), db.collection('children').orderBy('lastName').get()]);
+  const userMap = {};
+  usersSnap.docs.forEach(d => { userMap[d.id] = d.data(); });
+  allChildren = childrenSnap.docs.map(d => {
+    const c = d.data();
+    const parents = (c.parentUids || []).map(uid => userMap[uid]?.displayName || userMap[uid]?.email || uid);
+    return { id: d.id, ...c, parentNames: parents };
+  });
+  loadTeachersIntoSelect('bulk-teacher', 'Teacher: no change');
+  renderChildren(allChildren);
+}
+
+function filterChildren() {
+  const q = document.getElementById('child-search').value.toLowerCase();
+  renderChildren(allChildren.filter(c =>
+    `${c.firstName} ${c.lastName} ${c.grade} ${c.teacher}`.toLowerCase().includes(q)
+  ));
+}
+
+function renderChildren(list) {
+  const tbody = document.getElementById('children-tbody');
+  if (!list.length) { tbody.innerHTML = `<tr><td colspan="7" class="text-center py-12 text-gray-400">No children found.</td></tr>`; return; }
+  tbody.innerHTML = list.map(c => `<tr>
+    <td class="w-10"><input type="checkbox" class="child-cb cursor-pointer" data-id="${c.id}" onchange="toggleSelect(this)" ${selectedIds.has(c.id) ? 'checked' : ''} /></td>
+    <td class="font-medium">${c.firstName}</td>
+    <td>${c.lastName}</td>
+    <td>${c.grade}</td>
+    <td>${c.teacher || '—'}</td>
+    <td class="text-xs text-gray-500">${(c.parentNames || []).join(', ') || '—'}</td>
+    <td class="flex gap-3">
+      <button onclick="openModal('${c.id}')" class="text-xs text-indigo-600 hover:underline">Edit</button>
+      <button onclick="deleteChild('${c.id}','${c.firstName} ${c.lastName}')" class="text-xs text-red-500 hover:underline">Delete</button>
+    </td>
+  </tr>`).join('');
+  const allVisible = list.length > 0 && list.every(c => selectedIds.has(c.id));
+  const sa = document.getElementById('select-all');
+  if (sa) sa.checked = allVisible;
+}
+
+async function openModal(id = null) {
+  editingId = id;
+  document.getElementById('modal-title').textContent = id ? 'Edit Child' : 'Add Child';
+  await loadTeachersIntoSelect('c-teacher');
+  if (id) {
+    const c = allChildren.find(x => x.id === id);
+    if (c) {
+      document.getElementById('c-first').value = c.firstName;
+      document.getElementById('c-last').value = c.lastName;
+      document.getElementById('c-grade').value = c.grade;
+      document.getElementById('c-teacher').value = c.teacher || '';
+    }
+  } else {
+    document.getElementById('c-first').value = '';
+    document.getElementById('c-last').value = '';
+    document.getElementById('c-grade').value = '';
+    document.getElementById('c-teacher').value = '';
+  }
+  document.getElementById('modal').style.display = 'flex';
+}
+
+function closeModal() { document.getElementById('modal').style.display = 'none'; editingId = null; }
+
+async function saveChild() {
+  const first = document.getElementById('c-first').value.trim();
+  const last  = document.getElementById('c-last').value.trim();
+  const grade = document.getElementById('c-grade').value;
+  const teacher = document.getElementById('c-teacher').value;
+  if (!first || !last || !grade) { showToast('Name and grade are required.', 'error'); return; }
+  const data = { firstName: first, lastName: last, grade, teacher };
+  if (editingId) {
+    await db.collection('children').doc(editingId).update(data);
+    showToast('Updated!');
+  } else {
+    await db.collection('children').add({ ...data, parentUids: [], createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    showToast('Child added!');
+  }
+  closeModal();
+  loadChildren();
+}
+
+async function deleteChild(id, name) {
+  if (!confirm(`Delete ${name}?`)) return;
+  await db.collection('children').doc(id).delete();
+  showToast(`${name} deleted.`);
+  loadChildren();
+}
+
+async function importCSV(input) {
+  const text = await input.files[0].text();
+  let added = 0;
+  for (const line of text.trim().split('\n').filter(Boolean)) {
+    const [firstName, lastName, grade, teacher = ''] = line.split(',').map(s => s.trim().replace(/^"|"$/g, ''));
+    if (!firstName || !lastName || !grade) continue;
+    await db.collection('children').add({ firstName, lastName, grade, teacher, parentUids: [], createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    added++;
+  }
+  showToast(`Imported ${added} children.`);
+  input.value = '';
+  loadChildren();
+}
+
+// ── Bulk selection ──────────────────────────────────────────────
+
+function toggleSelect(cb) {
+  cb.checked ? selectedIds.add(cb.dataset.id) : selectedIds.delete(cb.dataset.id);
+  updateBulkBar();
+  // keep select-all in sync with visible rows
+  const cbs = document.querySelectorAll('.child-cb');
+  const sa = document.getElementById('select-all');
+  if (sa) sa.checked = cbs.length > 0 && [...cbs].every(c => c.checked);
+}
+
+function toggleSelectAll(cb) {
+  document.querySelectorAll('.child-cb').forEach(c => {
+    c.checked = cb.checked;
+    cb.checked ? selectedIds.add(c.dataset.id) : selectedIds.delete(c.dataset.id);
+  });
+  updateBulkBar();
+}
+
+function clearSelection() {
+  selectedIds.clear();
+  document.querySelectorAll('.child-cb').forEach(c => c.checked = false);
+  const sa = document.getElementById('select-all');
+  if (sa) sa.checked = false;
+  updateBulkBar();
+}
+
+function updateBulkBar() {
+  const n = selectedIds.size;
+  document.getElementById('bulk-bar').style.display = n > 0 ? 'flex' : 'none';
+  document.getElementById('bulk-count').textContent = `${n} child${n === 1 ? '' : 'ren'} selected`;
+}
+
+async function applyBulkUpdate() {
+  const grade   = document.getElementById('bulk-grade').value;
+  const teacher = document.getElementById('bulk-teacher').value;
+  if (!grade && !teacher) { showToast('Choose a grade or teacher to update.', 'error'); return; }
+
+  const update = {};
+  if (grade)   update.grade   = grade;
+  if (teacher) update.teacher = teacher;
+
+  const ids = [...selectedIds];
+  for (const id of ids) await db.collection('children').doc(id).update(update);
+
+  showToast(`Updated ${ids.length} child${ids.length === 1 ? '' : 'ren'}.`);
+  document.getElementById('bulk-grade').value   = '';
+  document.getElementById('bulk-teacher').value = '';
+  clearSelection();
+  loadChildren();
+}
+
+// ────────────────────────────────────────────────────────────────
+
+function exportChildren() {
+  const rows = [['First Name','Last Name','Grade','Teacher','Parents']];
+  allChildren.forEach(c => rows.push([c.firstName, c.lastName, c.grade, c.teacher||'', (c.parentNames||[]).join('; ')]));
+  downloadCSV(rows, 'kbp-children.csv');
+}
+</script>
+</body>
+</html>

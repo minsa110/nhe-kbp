@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Profile · NHE Korean Bilingual Program</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="js/config.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<!-- NAV -->
+<nav class="bg-white shadow-sm sticky top-0 z-40">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-between h-16">
+      <a href="index.html" class="flex items-center space-x-2">
+        <span class="text-xl">🐬</span>
+        <div>
+          <div class="text-sm font-bold text-indigo-700 leading-tight">Newport Heights Elementary</div>
+          <div class="text-xs text-gray-500 leading-tight">Korean Bilingual Program</div>
+        </div>
+      </a>
+      <div class="hidden md:flex items-center space-x-1">
+        <a href="announcements.html" class="nav-link px-3 py-2">Announcements</a>
+        <a href="calendar.html" class="nav-link px-3 py-2">Calendar</a>
+        <a href="directory.html" class="nav-link px-3 py-2">Directory</a>
+        <a href="profile.html" id="nav-profile" class="nav-link nav-link-active px-3 py-2 hidden">Profile</a>
+        <div id="notif-container" class="relative hidden">
+          <button id="nav-notif" onclick="openNotifications()" class="relative p-2 text-gray-500 hover:text-indigo-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+            </svg>
+            <span id="notif-badge" class="hidden absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">0</span>
+          </button>
+          <div id="notif-panel" class="hidden absolute right-0 top-10 w-80 bg-white border rounded-xl shadow-xl max-h-96 overflow-y-auto z-50"></div>
+        </div>
+        <button id="nav-logout" onclick="signOut()" class="nav-link px-3 py-2 hidden">Sign Out</button>
+        <a href="login.html" id="nav-login" class="btn-primary ml-2 hidden">Sign In</a>
+        <a href="admin-members.html" id="nav-admin" class="hidden" style="margin-left:0.5rem;padding:0.35rem 0.875rem;font-size:0.8125rem;font-weight:700;color:#3730a3;background:#e0e7ff;border:2px solid #818cf8;border-radius:0.5rem;text-decoration:none;white-space:nowrap">⚙ Admin</a>
+      </div>
+      <div class="md:hidden flex items-center">
+        <button onclick="toggleMobileMenu()" class="p-2 text-gray-500 hover:text-indigo-600">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+  <div id="mobile-menu" class="hidden md:hidden border-t bg-white px-4 py-3 space-y-1">
+    <a href="index.html" class="block py-2 text-sm text-gray-600">Home</a>
+    <a href="announcements.html" class="block py-2 text-sm text-gray-600">Announcements</a>
+    <a href="directory.html" class="block py-2 text-sm text-gray-600">Directory</a>
+    <a href="calendar.html" class="block py-2 text-sm text-gray-600">Calendar</a>
+    <a href="profile.html" id="mob-profile" class="block py-2 text-sm text-indigo-700 font-medium hidden">Profile</a>
+    <button id="mob-logout" onclick="signOut()" class="block py-2 text-sm text-gray-600 hidden text-left w-full">Sign Out</button>
+    <a href="login.html" id="mob-login" class="block py-2 text-sm text-indigo-600 font-medium hidden">Sign In</a>
+    <a href="admin-members.html" id="mob-admin" class="hidden block py-2 text-sm font-bold text-indigo-700">⚙ Admin</a>
+  </div>
+</nav>
+
+<!-- PAGE -->
+<div class="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+
+  <h1 class="text-2xl font-bold text-gray-900">My Profile</h1>
+
+  <!-- Profile Info Card -->
+  <div class="card">
+    <h2 class="text-base font-semibold text-gray-800 mb-4">Personal Information</h2>
+    <div class="space-y-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="form-label">Your Name <span class="text-red-500">*</span></label>
+          <input id="f-name" type="text" class="form-input" placeholder="Jane Kim" />
+        </div>
+        <div>
+          <label class="form-label">City of Residence</label>
+          <input id="f-city" type="text" class="form-input" placeholder="Bellevue" />
+        </div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="form-label">Phone Number</label>
+          <input id="f-phone" type="tel" class="form-input" placeholder="(949) 555-1234" />
+        </div>
+        <div>
+          <label class="form-label">KakaoTalk ID</label>
+          <input id="f-kakao" type="text" class="form-input" placeholder="Your Kakao ID" />
+        </div>
+      </div>
+      <div>
+        <label class="form-label">Email</label>
+        <input id="f-email" type="email" class="form-input bg-gray-50" readonly />
+        <p class="text-xs text-gray-400 mt-1">Email is used for login and cannot be changed here.</p>
+      </div>
+    </div>
+
+    <!-- Privacy Settings -->
+    <div class="mt-6 pt-5 border-t">
+      <h3 class="text-sm font-semibold text-gray-700 mb-1">Privacy Settings</h3>
+      <p class="text-xs text-gray-500 mb-4">Choose which fields other families can see in the directory. Admins always see everything.</p>
+      <div class="space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-gray-700">Show my name to other families</span>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="priv-name" class="sr-only peer" />
+            <div class="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:bg-indigo-600 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
+          </label>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-gray-700">Show my email address</span>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="priv-email" class="sr-only peer" />
+            <div class="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:bg-indigo-600 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
+          </label>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-gray-700">Show my phone number</span>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="priv-phone" class="sr-only peer" />
+            <div class="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:bg-indigo-600 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
+          </label>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-gray-700">Show my KakaoTalk ID</span>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="priv-kakao" class="sr-only peer" />
+            <div class="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:bg-indigo-600 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
+          </label>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-gray-700">Show my city</span>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="priv-city" class="sr-only peer" />
+            <div class="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:bg-indigo-600 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-6">
+      <button onclick="saveProfile()" class="btn-primary w-full sm:w-auto px-8">Save Profile</button>
+    </div>
+  </div>
+
+  <!-- My Students -->
+  <div class="card" id="section-children">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-base font-semibold text-gray-800">My Students</h2>
+      <button onclick="openAddChildModal()" class="btn-secondary btn-sm">+ Add Student</button>
+    </div>
+    <div id="my-children-list" class="space-y-2 mb-4">
+      <p class="text-sm text-gray-400">Loading…</p>
+    </div>
+  </div>
+
+  <!-- Danger Zone -->
+  <div class="card border-red-200">
+    <h2 class="text-base font-semibold text-red-700 mb-2">Remove Yourself from the Contact List</h2>
+    <p class="text-sm text-gray-600 mb-4">
+      This will permanently delete your profile, unlink you from all students, and remove your account.
+      This cannot be undone.
+    </p>
+    <button onclick="leaveProgram()" class="btn-danger btn-sm">Delete Me Off the Contact List</button>
+  </div>
+
+</div>
+
+<!-- Add Student Modal -->
+<div id="child-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-md">
+    <div class="p-6">
+      <h3 class="text-lg font-bold text-gray-900 mb-4">Add a Student</h3>
+      <div class="space-y-4">
+        <div>
+          <label class="form-label">Student's First Name <span class="text-red-500">*</span></label>
+          <input id="c-first" type="text" class="form-input" placeholder="First name" />
+        </div>
+        <div>
+          <label class="form-label">Student's Last Name <span class="text-red-500">*</span></label>
+          <input id="c-last" type="text" class="form-input" placeholder="Last name" />
+        </div>
+        <div>
+          <label class="form-label">Grade ('25-'26) <span class="text-red-500">*</span></label>
+          <select id="c-grade" class="form-select">
+            <option value="">Select grade…</option>
+            <option>Kindergarten</option><option>1st Grade</option><option>2nd Grade</option>
+            <option>3rd Grade</option><option>4th Grade</option><option>5th Grade</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Teacher</label>
+          <select id="c-teacher" class="form-select">
+            <option value="">Select teacher…</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Your Relationship to Student <span class="text-red-500">*</span></label>
+          <input id="c-relationship" type="text" class="form-input" placeholder="e.g. Mom, Dad, Grandparent" />
+        </div>
+      </div>
+      <div class="flex justify-end gap-3 mt-6">
+        <button onclick="closeAddChildModal()" class="btn-secondary">Cancel</button>
+        <button onclick="addChild()" class="btn-primary">Add Student</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer class="mt-12 border-t bg-white">
+  <div class="max-w-6xl mx-auto px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-sm text-gray-400">
+    <span><a href="https://newportheights.bsd405.org/">Newport Heights Elementary</a> · Korean Bilingual Program</span>
+    <button onclick="toggleViewMode()" id="view-toggle-btn" class="text-indigo-500 hover:underline text-xs"></button>
+  </div>
+</footer>
+
+<script src="js/auth.js"></script>
+<script>
+initViewMode();
+
+async function loadTeachers() {
+  const snap = await db.collection('config').doc('teachers').get();
+  const list = snap.exists ? (snap.data().list || []) : [];
+  ['c-teacher'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const firstOpt = sel.options[0];
+    sel.innerHTML = '';
+    sel.appendChild(firstOpt);
+    list.forEach(t => {
+      const o = document.createElement('option');
+      o.value = t; o.textContent = t;
+      sel.appendChild(o);
+    });
+  });
+}
+
+initAuth({
+  requireAuth: true,
+  onReady: (user, userData) => {
+    if (!userData) { signOut(); return; }
+    populateForm(user, userData);
+    loadTeachers();
+    loadMyChildren(user.uid);
+  }
+});
+
+function populateForm(user, data) {
+  document.getElementById('f-email').value = user.email;
+  document.getElementById('f-name').value = data.displayName || '';
+  document.getElementById('f-city').value = data.city || '';
+  document.getElementById('f-phone').value = data.phone || '';
+  document.getElementById('f-kakao').value = data.kakao || '';
+
+  const p = data.privacy || {};
+  document.getElementById('priv-name').checked = !!p.name;
+  document.getElementById('priv-email').checked = !!p.email;
+  document.getElementById('priv-phone').checked = !!p.phone;
+  document.getElementById('priv-kakao').checked = !!p.kakao;
+  document.getElementById('priv-city').checked = !!p.city;
+}
+
+async function saveProfile() {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { showToast('Name is required.', 'error'); return; }
+
+  const data = {
+    displayName: name,
+    city: document.getElementById('f-city').value.trim(),
+    phone: document.getElementById('f-phone').value.trim(),
+    kakao: document.getElementById('f-kakao').value.trim(),
+    privacy: {
+      name: document.getElementById('priv-name').checked,
+      email: document.getElementById('priv-email').checked,
+      phone: document.getElementById('priv-phone').checked,
+      kakao: document.getElementById('priv-kakao').checked,
+      city: document.getElementById('priv-city').checked,
+    },
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+  };
+
+  try {
+    await db.collection('users').doc(currentUser.uid).update(data);
+    showToast('Profile saved!');
+  } catch (e) {
+    showToast('Error saving profile: ' + e.message, 'error');
+  }
+}
+
+async function loadMyChildren(uid) {
+  const list = document.getElementById('my-children-list');
+  const snap = await db.collection('children').where('parentUids', 'array-contains', uid).get();
+  if (snap.empty) {
+    list.innerHTML = `<p class="text-sm text-gray-400">No students added yet. Click "+ Add Student" to get started.</p>`;
+    return;
+  }
+  list.innerHTML = snap.docs.map(d => {
+    const c = d.data();
+    return `
+      <div class="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
+        <div>
+          <span class="font-medium text-gray-900 text-sm">${c.firstName} ${c.lastName}</span>
+          <span class="text-gray-500 text-xs ml-2">${c.grade}${c.teacher ? ' · ' + c.teacher : ''}${c.relationship ? ' · ' + c.relationship : ''}</span>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="removeChildLink('${d.id}')" class="text-xs text-red-500 hover:underline">Unlink</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+
+function openAddChildModal() { document.getElementById('child-modal').classList.remove('hidden'); }
+function closeAddChildModal() {
+  document.getElementById('child-modal').classList.add('hidden');
+  ['c-first','c-last','c-teacher','c-relationship'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('c-grade').value = '';
+}
+
+async function addChild() {
+  const first = document.getElementById('c-first').value.trim();
+  const last = document.getElementById('c-last').value.trim();
+  const grade = document.getElementById('c-grade').value;
+  const teacher = document.getElementById('c-teacher').value.trim();
+  const relationship = document.getElementById('c-relationship').value.trim();
+  if (!first || !last || !grade) { showToast('Name and grade are required.', 'error'); return; }
+  if (!relationship) { showToast('Please enter your relationship to the student.', 'error'); return; }
+
+  try {
+    const ref = await db.collection('children').add({
+      firstName: first, lastName: last, grade, teacher, relationship,
+      parentUids: [currentUser.uid],
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    await db.collection('users').doc(currentUser.uid).update({
+      childIds: firebase.firestore.FieldValue.arrayUnion(ref.id)
+    });
+    closeAddChildModal();
+    showToast('Student added!');
+    loadMyChildren(currentUser.uid);
+  } catch (e) {
+    showToast('Error: ' + e.message, 'error');
+  }
+}
+
+async function removeChildLink(childId) {
+  if (!confirm('Remove yourself as a linked parent for this student? The student profile will remain for other linked parents.')) return;
+  await db.collection('children').doc(childId).update({
+    parentUids: firebase.firestore.FieldValue.arrayRemove(currentUser.uid)
+  });
+  await db.collection('users').doc(currentUser.uid).update({
+    childIds: firebase.firestore.FieldValue.arrayRemove(childId)
+  });
+  showToast('Student unlinked.');
+  loadMyChildren(currentUser.uid);
+}
+
+
+async function leaveProgram() {
+  const confirmed = confirm(
+    'Are you sure you want to remove yourself from the contact list?\n\n' +
+    'This will permanently delete your profile and cannot be undone.'
+  );
+  if (!confirmed) return;
+  const doubleConfirm = confirm('Last chance — delete your profile and all your data?');
+  if (!doubleConfirm) return;
+
+  try {
+    const uid = currentUser.uid;
+
+    // Delete Auth account first — if this fails (e.g. requires re-login),
+    // nothing else is deleted yet so the account remains fully intact.
+    await currentUser.delete();
+
+    // Remove from all children
+    const myChildren = await db.collection('children').where('parentUids', 'array-contains', uid).get();
+    for (const doc of myChildren.docs) {
+      await doc.ref.update({ parentUids: firebase.firestore.FieldValue.arrayRemove(uid) });
+    }
+
+    // Delete notifications
+    const notifSnap = await db.collection('notifications').doc(uid).collection('items').get();
+    for (const n of notifSnap.docs) await n.ref.delete();
+    await db.collection('notifications').doc(uid).delete().catch(() => {});
+
+    // Delete user doc
+    await db.collection('users').doc(uid).delete();
+
+    await auth.signOut();
+    window.location.href = 'index.html';
+  } catch (e) {
+    if (e.code === 'auth/requires-recent-login') {
+      showToast('For security, please sign out and sign back in before deleting your account.', 'error');
+    } else {
+      showToast('Error: ' + e.message, 'error');
+    }
+  }
+}
+
+// View mode toggle
+function initViewMode() {
+  const mode = localStorage.getItem('viewMode') || 'auto';
+  applyViewMode(mode);
+}
+function toggleViewMode() {
+  const current = localStorage.getItem('viewMode') || 'auto';
+  const next = current === 'desktop' ? 'mobile' : 'desktop';
+  localStorage.setItem('viewMode', next);
+  applyViewMode(next);
+}
+function applyViewMode(mode) {
+  const btn = document.getElementById('view-toggle-btn');
+  if (mode === 'desktop') {
+    document.body.classList.add('force-desktop');
+    document.body.classList.remove('force-mobile');
+    if (btn) btn.textContent = 'Switch to Mobile View';
+  } else if (mode === 'mobile') {
+    document.body.classList.add('force-mobile');
+    document.body.classList.remove('force-desktop');
+    if (btn) btn.textContent = 'Switch to Desktop View';
+  } else {
+    document.body.classList.remove('force-desktop', 'force-mobile');
+    if (btn) btn.textContent = '';
+  }
+}
+</script>
+</body>
+</html>

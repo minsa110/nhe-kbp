@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Send Email · Admin · NHE KBP</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <script src="js/config.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<nav class="bg-white shadow-sm sticky top-0 z-40">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-between h-16">
+      <a href="index.html" class="flex items-center space-x-2">
+        <span class="text-xl">🐬</span>
+        <div>
+          <div class="text-sm font-bold text-indigo-700 leading-tight">Newport Heights Elementary</div>
+          <div class="text-xs text-gray-500 leading-tight">Korean Bilingual Program</div>
+        </div>
+      </a>
+      <div class="hidden md:flex items-center space-x-1">
+        <a href="announcements.html" class="nav-link px-3 py-2">Announcements</a>
+        <a href="calendar.html" class="nav-link px-3 py-2">Calendar</a>
+        <a href="directory.html" class="nav-link px-3 py-2">Directory</a>
+        <a href="profile.html" id="nav-profile" class="nav-link px-3 py-2 hidden">Profile</a>
+        <button id="nav-logout" onclick="signOut()" class="nav-link px-3 py-2 hidden">Sign Out</button>
+        <a href="login.html" id="nav-login" class="btn-primary ml-2 hidden">Sign In</a>
+        <a href="admin-members.html" id="nav-admin" class="hidden" style="margin-left:0.5rem;padding:0.35rem 0.875rem;font-size:0.8125rem;font-weight:700;color:#3730a3;background:#e0e7ff;border:2px solid #818cf8;border-radius:0.5rem;text-decoration:none;white-space:nowrap">&#9881; Admin</a>
+      </div>
+      <div class="md:hidden flex items-center">
+        <button onclick="toggleMobileMenu()" class="p-2 text-gray-500"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+      </div>
+    </div>
+  </div>
+  <div id="mobile-menu" class="hidden md:hidden border-t bg-white px-4 py-3 space-y-1">
+    <a href="index.html" class="block py-2 text-sm text-gray-600">Home</a>
+    <a href="directory.html" class="block py-2 text-sm text-gray-600">Directory</a>
+    <a href="calendar.html" class="block py-2 text-sm text-gray-600">Calendar</a>
+    <a href="admin-members.html" id="mob-admin" class="block py-2 text-sm text-indigo-700 font-medium hidden">Admin</a>
+    <a href="profile.html" id="mob-profile" class="block py-2 text-sm text-gray-600 hidden">Profile</a>
+    <button id="mob-logout" onclick="signOut()" class="block py-2 text-sm text-gray-600 hidden text-left w-full">Sign Out</button>
+    <a href="login.html" id="mob-login" class="block py-2 text-sm text-indigo-600 font-medium hidden">Sign In</a>
+  </div>
+</nav>
+<div id="admin-subnav"></div>
+
+<div class="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+  <h1 class="text-2xl font-bold text-gray-900 mb-6">✉️ Send Email</h1>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+    <div class="card">
+      <h3 class="text-base font-semibold text-gray-800 mb-4">Compose</h3>
+      <div class="space-y-4">
+        <div><label class="form-label">Subject</label><input id="subject" class="form-input" placeholder="KBP Update: …" /></div>
+        <div><label class="form-label">Message</label><textarea id="message" rows="8" class="form-input" placeholder="Write your message…"></textarea></div>
+        <div>
+          <label class="form-label">Recipients</label>
+          <div class="space-y-2 mt-1">
+            <label class="flex items-center gap-2 text-sm cursor-pointer">
+              <input type="radio" name="recip" value="all" checked /> All members
+            </label>
+            <label class="flex items-center gap-2 text-sm cursor-pointer">
+              <input type="radio" name="recip" value="grade" /> By grade:
+              <select id="recip-grade" class="form-select py-1 ml-1" style="width:auto">
+                <option>Kindergarten</option><option>1st Grade</option><option>2nd Grade</option>
+                <option>3rd Grade</option><option>4th Grade</option><option>5th Grade</option>
+              </select>
+            </label>
+            <label class="flex items-center gap-2 text-sm cursor-pointer">
+              <input type="radio" name="recip" value="teacher" /> By teacher:
+              <select id="recip-teacher" class="form-select py-1 ml-1" style="width:auto">
+                <option value="">Loading…</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div id="status" style="display:none" class="text-sm rounded-lg p-3"></div>
+        <button onclick="send()" class="btn-primary w-full">Send Email</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 class="text-base font-semibold text-gray-800 mb-2">EmailJS Setup</h3>
+      <div id="emailjs-status" class="text-sm mb-3"></div>
+      <ol class="text-sm text-gray-600 space-y-2 list-decimal list-inside">
+        <li>Sign up free at <a href="https://emailjs.com" target="_blank" class="text-indigo-600 hover:underline">emailjs.com</a> (200 emails/month free)</li>
+        <li>Create an Email Service — connect your Gmail</li>
+        <li>Create a Template with variables:<br>
+          <code class="bg-gray-100 px-1 rounded text-xs">&#123;&#123;to_email&#125;&#125;</code>
+          <code class="bg-gray-100 px-1 rounded text-xs">&#123;&#123;subject&#125;&#125;</code>
+          <code class="bg-gray-100 px-1 rounded text-xs">&#123;&#123;message&#125;&#125;</code>
+        </li>
+        <li>Paste Service ID, Template ID, and Public Key into <code class="bg-gray-100 px-1 rounded text-xs">js/config.js</code></li>
+      </ol>
+    </div>
+
+  </div>
+</div>
+
+<script src="js/auth.js"></script>
+<script src="js/admin-common.js"></script>
+<script>
+renderAdminNav('email');
+
+initAuth({
+  requireAuth: true, requireAdmin: true,
+  onReady: () => {
+    checkSetup();
+    loadTeachersIntoSelect('recip-teacher', 'Select teacher…');
+  }
+});
+
+function checkSetup() {
+  const el = document.getElementById('emailjs-status');
+  if (EMAILJS_SERVICE_ID === 'YOUR_SERVICE_ID') {
+    el.innerHTML = '<span style="color:#b45309">⚠ EmailJS not configured yet. Follow the steps on the right.</span>';
+  } else {
+    el.innerHTML = '<span style="color:#059669">✓ EmailJS is configured.</span>';
+    emailjs.init(EMAILJS_PUBLIC_KEY);
+  }
+}
+
+async function send() {
+  if (EMAILJS_SERVICE_ID === 'YOUR_SERVICE_ID') { showToast('EmailJS not configured yet.', 'error'); return; }
+  const subject = document.getElementById('subject').value.trim();
+  const message = document.getElementById('message').value.trim();
+  if (!subject || !message) { showToast('Subject and message are required.', 'error'); return; }
+
+  const recipType = document.querySelector('input[name="recip"]:checked').value;
+  let emails = [];
+
+  if (recipType === 'all') {
+    const snap = await db.collection('users').get();
+    emails = snap.docs.map(d => d.data().email).filter(Boolean);
+  } else if (recipType === 'grade') {
+    const grade = document.getElementById('recip-grade').value;
+    const kids = await db.collection('children').where('grade', '==', grade).get();
+    const uids = [...new Set(kids.docs.flatMap(d => d.data().parentUids || []))];
+    const docs = await Promise.all(uids.map(uid => db.collection('users').doc(uid).get()));
+    emails = docs.filter(d => d.exists).map(d => d.data().email).filter(Boolean);
+  } else {
+    const teacher = document.getElementById('recip-teacher').value;
+    if (!teacher) { showToast('Select a teacher.', 'error'); return; }
+    const kids = await db.collection('children').where('teacher', '==', teacher).get();
+    const uids = [...new Set(kids.docs.flatMap(d => d.data().parentUids || []))];
+    const docs = await Promise.all(uids.map(uid => db.collection('users').doc(uid).get()));
+    emails = docs.filter(d => d.exists).map(d => d.data().email).filter(Boolean);
+  }
+
+  if (!emails.length) { showToast('No recipients found.', 'error'); return; }
+
+  const statusEl = document.getElementById('status');
+  statusEl.style.display = 'block';
+  statusEl.style.background = '#f9fafb';
+  statusEl.style.color = '#374151';
+  statusEl.textContent = `Sending to ${emails.length} recipients…`;
+
+  let sent = 0, failed = 0;
+  for (const to_email of emails) {
+    try { await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, { to_email, subject, message }); sent++; }
+    catch (e) { failed++; }
+  }
+
+  statusEl.style.background = failed ? '#fffbeb' : '#ecfdf5';
+  statusEl.style.color = failed ? '#b45309' : '#065f46';
+  statusEl.textContent = `Done! Sent: ${sent}${failed ? `, Failed: ${failed}` : ''}`;
+}
+</script>
+</body>
+</html>

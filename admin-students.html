@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Students · Admin · NHE KBP</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="js/config.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<nav class="bg-white shadow-sm sticky top-0 z-40">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-between h-16">
+      <a href="index.html" class="flex items-center space-x-2">
+        <span class="text-xl">🐬</span>
+        <div>
+          <div class="text-sm font-bold text-indigo-700 leading-tight">Newport Heights Elementary</div>
+          <div class="text-xs text-gray-500 leading-tight">Korean Bilingual Program</div>
+        </div>
+      </a>
+      <div class="hidden md:flex items-center space-x-1">
+        <a href="announcements.html" class="nav-link px-3 py-2">Announcements</a>
+        <a href="calendar.html" class="nav-link px-3 py-2">Calendar</a>
+        <a href="directory.html" class="nav-link px-3 py-2">Directory</a>
+        <a href="profile.html" id="nav-profile" class="nav-link px-3 py-2 hidden">Profile</a>
+        <div class="relative">
+          <button id="nav-notif" onclick="openNotifications()" class="relative p-2 text-gray-500 hover:text-indigo-600 hidden">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+            <span id="notif-badge" class="hidden absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">0</span>
+          </button>
+          <div id="notif-panel" class="hidden absolute right-0 top-10 w-80 bg-white border rounded-xl shadow-xl max-h-96 overflow-y-auto z-50"></div>
+        </div>
+        <button id="nav-logout" onclick="signOut()" class="nav-link px-3 py-2 hidden">Sign Out</button>
+        <a href="login.html" id="nav-login" class="btn-primary ml-2 hidden">Sign In</a>
+        <a href="admin-members.html" id="nav-admin" class="hidden" style="margin-left:0.5rem;padding:0.35rem 0.875rem;font-size:0.8125rem;font-weight:700;color:#3730a3;background:#e0e7ff;border:2px solid #818cf8;border-radius:0.5rem;text-decoration:none;white-space:nowrap">⚙ Admin</a>
+      </div>
+      <div class="md:hidden flex items-center">
+        <button onclick="toggleMobileMenu()" class="p-2 text-gray-500"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+      </div>
+    </div>
+  </div>
+  <div id="mobile-menu" class="hidden md:hidden border-t bg-white px-4 py-3 space-y-1">
+    <a href="announcements.html" class="block py-2 text-sm text-gray-600">Announcements</a>
+    <a href="calendar.html" class="block py-2 text-sm text-gray-600">Calendar</a>
+    <a href="directory.html" class="block py-2 text-sm text-gray-600">Directory</a>
+    <a href="profile.html" id="mob-profile" class="block py-2 text-sm text-gray-600 hidden">Profile</a>
+    <button id="mob-logout" onclick="signOut()" class="block py-2 text-sm text-gray-600 hidden text-left w-full">Sign Out</button>
+    <a href="login.html" id="mob-login" class="block py-2 text-sm text-indigo-600 font-medium hidden">Sign In</a>
+    <a href="admin-members.html" id="mob-admin" class="hidden block py-2 text-sm font-bold text-indigo-700">⚙ Admin</a>
+  </div>
+</nav>
+<div id="admin-subnav"></div>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+  <div class="flex flex-col sm:flex-row justify-between gap-3 mb-4">
+    <h1 class="text-2xl font-bold text-gray-900">🎓 Students</h1>
+    <div class="flex flex-wrap gap-2">
+      <input id="student-search" type="text" class="form-input" placeholder="Search students…" oninput="filterStudents()" style="width:200px" />
+      <button onclick="exportStudentsCSV()" class="btn-secondary btn-sm">⬇ Export CSV</button>
+    </div>
+  </div>
+
+  <!-- Bulk bar -->
+  <div id="student-bulk-bar" style="display:none" class="bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-3 mb-3 flex flex-wrap items-center gap-3">
+    <span id="student-bulk-count" class="text-sm font-semibold text-indigo-800 shrink-0"></span>
+    <select id="student-bulk-grade" class="form-select text-sm" style="width:auto">
+      <option value="">Grade: no change</option>
+      <option>Kindergarten</option><option>1st Grade</option><option>2nd Grade</option>
+      <option>3rd Grade</option><option>4th Grade</option><option>5th Grade</option>
+    </select>
+    <select id="student-bulk-teacher" class="form-select text-sm" style="width:auto">
+      <option value="">Teacher: no change</option>
+    </select>
+    <button onclick="applyStudentBulkUpdate()" class="btn-primary btn-sm">Apply to Selected</button>
+    <button id="merge-students-btn" onclick="openMergeModal()" class="btn-secondary btn-sm" style="display:none">⤢ Merge Students</button>
+    <button onclick="clearStudentSelection()" class="btn-secondary btn-sm">Clear selection</button>
+  </div>
+
+  <div class="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+    <table class="data-table min-w-full">
+      <thead><tr>
+        <th class="w-10"><input type="checkbox" id="select-all-students" onchange="toggleSelectAllStudents(this)" class="cursor-pointer" /></th>
+        <th>First Name</th><th>Last Name</th><th>Grade</th><th>Teacher</th><th>Parents</th><th>Actions</th>
+      </tr></thead>
+      <tbody id="students-tbody"><tr><td colspan="7" class="text-center py-10 text-gray-400">Loading…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Student Edit Modal -->
+<div id="student-modal" style="display:none" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
+    <h3 id="student-modal-title" class="text-lg font-bold text-gray-900 mb-4">Edit Student</h3>
+    <div class="space-y-3">
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="form-label">First Name *</label><input id="sm-first" class="form-input" /></div>
+        <div><label class="form-label">Last Name *</label><input id="sm-last" class="form-input" /></div>
+      </div>
+      <div><label class="form-label">Grade *</label>
+        <select id="sm-grade" class="form-select">
+          <option value="">Select…</option>
+          <option>Kindergarten</option><option>1st Grade</option><option>2nd Grade</option>
+          <option>3rd Grade</option><option>4th Grade</option><option>5th Grade</option>
+        </select>
+      </div>
+      <div><label class="form-label">Teacher</label>
+        <select id="sm-teacher" class="form-select"><option value="">Select teacher…</option></select>
+      </div>
+    </div>
+    <div class="flex justify-end gap-3 mt-5">
+      <button onclick="closeStudentModal()" class="btn-secondary">Cancel</button>
+      <button onclick="saveStudent()" class="btn-primary">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Merge Students Modal -->
+<div id="merge-modal" style="display:none" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6">
+    <h3 class="text-lg font-bold text-gray-900 mb-4">⤢ Merge Students</h3>
+    <div id="merge-options" class="space-y-3 mb-5"></div>
+    <div class="flex justify-end gap-3">
+      <button onclick="closeMergeModal()" class="btn-secondary">Cancel</button>
+      <button onclick="confirmMerge()" class="btn-primary">Merge</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/auth.js"></script>
+<script src="js/admin-common.js"></script>
+<script>
+renderAdminNav('students');
+
+let allStudents = [];
+let filteredStudents = [];
+let editingStudentId = null;
+let selectedStudentIds = new Set();
+
+initAuth({
+  requireAuth: true, requireAdmin: true,
+  onReady: () => loadStudents()
+});
+
+async function loadStudents() {
+  const [usersSnap, childrenSnap] = await Promise.all([
+    db.collection('users').get(),
+    db.collection('children').get()
+  ]);
+  const userMap = {};
+  usersSnap.docs.forEach(d => { userMap[d.id] = d.data(); });
+
+  allStudents = childrenSnap.docs.map(d => {
+    const c = d.data();
+    const parents = (c.parentUids || []).map(uid => userMap[uid]?.displayName || userMap[uid]?.email || uid);
+    return { id: d.id, ...c, parentNames: parents };
+  }).sort((a, b) => (a.lastName || '').localeCompare(b.lastName || ''));
+  filteredStudents = [...allStudents];
+
+  loadTeachersIntoSelect('student-bulk-teacher', 'Teacher: no change');
+  renderStudents(filteredStudents);
+}
+
+function filterStudents() {
+  const q = document.getElementById('student-search').value.toLowerCase();
+  filteredStudents = allStudents.filter(c =>
+    `${c.firstName} ${c.lastName} ${c.grade} ${c.teacher}`.toLowerCase().includes(q)
+  );
+  renderStudents(filteredStudents);
+}
+
+function renderStudents(list) {
+  const tbody = document.getElementById('students-tbody');
+  if (!list.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-10 text-gray-400">No students found.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = list.map(c => `<tr>
+    <td class="w-10"><input type="checkbox" class="student-cb cursor-pointer" data-id="${c.id}"
+      onchange="toggleStudentSelect(this)" ${selectedStudentIds.has(c.id) ? 'checked' : ''} /></td>
+    <td class="font-medium">${c.firstName}</td>
+    <td>${c.lastName}</td>
+    <td>${c.grade}</td>
+    <td>${c.teacher || '—'}</td>
+    <td class="text-xs text-gray-500">${(c.parentNames || []).join(', ') || '—'}</td>
+    <td class="flex gap-3">
+      <button onclick="openStudentModal('${c.id}')" class="text-xs text-indigo-600 hover:underline">Edit</button>
+      ${(c.absorbedEntries?.length > 0) ? `<button onclick="unmergeStudent('${c.id}')" class="text-xs text-amber-600 hover:underline">Unmerge</button>` : ''}
+      <button onclick="deleteStudent('${c.id}','${(c.firstName + ' ' + c.lastName).replace(/'/g,"&#39;")}')" class="text-xs text-red-500 hover:underline">Delete</button>
+    </td>
+  </tr>`).join('');
+  const allVis = list.length > 0 && list.every(c => selectedStudentIds.has(c.id));
+  const sa = document.getElementById('select-all-students');
+  if (sa) sa.checked = allVis;
+}
+
+function toggleStudentSelect(cb) {
+  cb.checked ? selectedStudentIds.add(cb.dataset.id) : selectedStudentIds.delete(cb.dataset.id);
+  updateStudentBulkBar();
+  const cbs = document.querySelectorAll('.student-cb');
+  const sa = document.getElementById('select-all-students');
+  if (sa) sa.checked = cbs.length > 0 && [...cbs].every(c => c.checked);
+}
+function toggleSelectAllStudents(cb) {
+  document.querySelectorAll('.student-cb').forEach(c => {
+    c.checked = cb.checked;
+    cb.checked ? selectedStudentIds.add(c.dataset.id) : selectedStudentIds.delete(c.dataset.id);
+  });
+  updateStudentBulkBar();
+}
+function clearStudentSelection() {
+  selectedStudentIds.clear();
+  document.querySelectorAll('.student-cb').forEach(c => c.checked = false);
+  const sa = document.getElementById('select-all-students');
+  if (sa) sa.checked = false;
+  updateStudentBulkBar();
+}
+function updateStudentBulkBar() {
+  const n = selectedStudentIds.size;
+  document.getElementById('student-bulk-bar').style.display = n > 0 ? 'flex' : 'none';
+  document.getElementById('student-bulk-count').textContent = `${n} student${n === 1 ? '' : 's'} selected`;
+  document.getElementById('merge-students-btn').style.display = n >= 2 ? 'inline-flex' : 'none';
+}
+
+async function applyStudentBulkUpdate() {
+  const grade   = document.getElementById('student-bulk-grade').value;
+  const teacher = document.getElementById('student-bulk-teacher').value;
+  if (!grade && !teacher) { showToast('Choose a grade or teacher to update.', 'error'); return; }
+  const update = {};
+  if (grade)   update.grade   = grade;
+  if (teacher) update.teacher = teacher;
+  const ids = [...selectedStudentIds];
+  for (const id of ids) await db.collection('children').doc(id).update(update);
+  showToast(`Updated ${ids.length} student${ids.length === 1 ? '' : 's'}.`);
+  document.getElementById('student-bulk-grade').value   = '';
+  document.getElementById('student-bulk-teacher').value = '';
+  clearStudentSelection();
+  loadStudents();
+}
+
+async function openStudentModal(id = null) {
+  editingStudentId = id;
+  document.getElementById('student-modal-title').textContent = id ? 'Edit Student' : 'Add Student';
+  await loadTeachersIntoSelect('sm-teacher');
+  if (id) {
+    const c = allStudents.find(x => x.id === id);
+    if (c) {
+      document.getElementById('sm-first').value   = c.firstName;
+      document.getElementById('sm-last').value    = c.lastName;
+      document.getElementById('sm-grade').value   = c.grade;
+      document.getElementById('sm-teacher').value = c.teacher || '';
+    }
+  } else {
+    ['sm-first', 'sm-last'].forEach(i => document.getElementById(i).value = '');
+    document.getElementById('sm-grade').value   = '';
+    document.getElementById('sm-teacher').value = '';
+  }
+  document.getElementById('student-modal').style.display = 'flex';
+}
+function closeStudentModal() {
+  document.getElementById('student-modal').style.display = 'none';
+  editingStudentId = null;
+}
+
+async function saveStudent() {
+  const first   = document.getElementById('sm-first').value.trim();
+  const last    = document.getElementById('sm-last').value.trim();
+  const grade   = document.getElementById('sm-grade').value;
+  const teacher = document.getElementById('sm-teacher').value;
+  if (!first || !last || !grade) { showToast('Name and grade are required.', 'error'); return; }
+  const data = { firstName: first, lastName: last, grade, teacher };
+  if (editingStudentId) {
+    await db.collection('children').doc(editingStudentId).update(data);
+    showToast('Updated!');
+  } else {
+    await db.collection('children').add({ ...data, parentUids: [], createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    showToast('Student added!');
+  }
+  closeStudentModal();
+  loadStudents();
+}
+
+async function deleteStudent(id, name) {
+  if (!confirm(`Delete ${name}?`)) return;
+  await db.collection('children').doc(id).delete();
+  showToast(`${name} deleted.`);
+  loadStudents();
+}
+
+function exportStudentsCSV() {
+  const rows = [['First Name', 'Last Name', 'Grade', 'Teacher', 'Parents']];
+  allStudents.forEach(c => rows.push([
+    c.firstName, c.lastName, c.grade, c.teacher || '',
+    (c.parentNames || []).join('; ')
+  ]));
+  downloadCSV(rows, 'kbp-students.csv');
+}
+
+// ── Merge Students ──────────────────────────────────────────────
+
+function openMergeModal() {
+  const selected = allStudents
+    .filter(c => selectedStudentIds.has(c.id))
+    .sort((a, b) => (a.createdAt?.toMillis?.() ?? 0) - (b.createdAt?.toMillis?.() ?? 0));
+  document.getElementById('merge-options').innerHTML = selected.map(c => `
+    <div class="p-3 rounded-lg border border-gray-200">
+      <p class="font-medium text-gray-900">${c.firstName} ${c.lastName}</p>
+      <p class="text-xs text-gray-500">${c.grade}${c.teacher ? ' · ' + c.teacher : ''}</p>
+      <p class="text-xs text-gray-400">Parents: ${(c.parentNames || []).join(', ') || 'none'}</p>
+    </div>`).join('');
+  document.getElementById('merge-modal').style.display = 'flex';
+}
+
+function closeMergeModal() { document.getElementById('merge-modal').style.display = 'none'; }
+
+async function confirmMerge() {
+  const selected = allStudents
+    .filter(c => selectedStudentIds.has(c.id))
+    .sort((a, b) => (a.createdAt?.toMillis?.() ?? 0) - (b.createdAt?.toMillis?.() ?? 0));
+  const primary = selected[0];
+  const others = selected.slice(1);
+
+  // Store absorbed entries on the primary so we can unmerge later
+  const newAbsorbed = others.map(c => ({
+    id: c.id,
+    firstName: c.firstName,
+    lastName: c.lastName,
+    grade: c.grade,
+    teacher: c.teacher || '',
+    parentUids: c.parentUids || []
+  }));
+  const existingAbsorbed = primary.absorbedEntries || [];
+  await db.collection('children').doc(primary.id).update({
+    absorbedEntries: [...existingAbsorbed, ...newAbsorbed]
+  });
+
+  // Union all parents from duplicate entries onto the kept entry
+  const extraParents = new Set();
+  others.forEach(c => (c.parentUids || []).forEach(uid => extraParents.add(uid)));
+  if (extraParents.size > 0) {
+    await db.collection('children').doc(primary.id).update({
+      parentUids: firebase.firestore.FieldValue.arrayUnion(...Array.from(extraParents))
+    });
+  }
+
+  // For each duplicate entry: point its parents to the kept entry, then remove the duplicate
+  for (const c of others) {
+    for (const uid of (c.parentUids || [])) {
+      await db.collection('users').doc(uid).update({
+        childIds: firebase.firestore.FieldValue.arrayUnion(primary.id)
+      });
+      await db.collection('users').doc(uid).update({
+        childIds: firebase.firestore.FieldValue.arrayRemove(c.id)
+      });
+    }
+    await db.collection('children').doc(c.id).delete();
+  }
+
+  showToast('Students merged.');
+  closeMergeModal();
+  clearStudentSelection();
+  loadStudents();
+}
+
+async function unmergeStudent(id) {
+  const student = allStudents.find(x => x.id === id);
+  if (!student?.absorbedEntries?.length) return;
+  const name = `${student.firstName} ${student.lastName}`;
+  if (!confirm(`Unmerge ${name}? This will restore each original entry separately.`)) return;
+
+  for (const entry of student.absorbedEntries) {
+    // Restore the original entry with its original ID
+    await db.collection('children').doc(entry.id).set({
+      firstName: entry.firstName,
+      lastName: entry.lastName,
+      grade: entry.grade,
+      teacher: entry.teacher || '',
+      parentUids: entry.parentUids,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    // Point each restored parent back to the restored entry and away from the primary
+    for (const uid of (entry.parentUids || [])) {
+      await db.collection('users').doc(uid).update({
+        childIds: firebase.firestore.FieldValue.arrayUnion(entry.id)
+      });
+      await db.collection('users').doc(uid).update({
+        childIds: firebase.firestore.FieldValue.arrayRemove(id)
+      });
+    }
+    // Remove the restored parents from the primary's parentUids
+    if (entry.parentUids?.length > 0) {
+      await db.collection('children').doc(id).update({
+        parentUids: firebase.firestore.FieldValue.arrayRemove(...entry.parentUids)
+      });
+    }
+  }
+
+  // Clear the merge history from the primary
+  await db.collection('children').doc(id).update({ absorbedEntries: [] });
+
+  showToast(`${name} unmerged.`);
+  loadStudents();
+}
+</script>
+</body>
+</html>

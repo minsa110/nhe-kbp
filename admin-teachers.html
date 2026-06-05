@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Teachers · Admin · NHE KBP</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="js/config.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<nav class="bg-white shadow-sm sticky top-0 z-40">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-between h-16">
+      <a href="index.html" class="flex items-center space-x-2">
+        <span class="text-xl">🐬</span>
+        <div>
+          <div class="text-sm font-bold text-indigo-700 leading-tight">Newport Heights Elementary</div>
+          <div class="text-xs text-gray-500 leading-tight">Korean Bilingual Program</div>
+        </div>
+      </a>
+      <div class="hidden md:flex items-center space-x-1">
+        <a href="announcements.html" class="nav-link px-3 py-2">Announcements</a>
+        <a href="calendar.html" class="nav-link px-3 py-2">Calendar</a>
+        <a href="directory.html" class="nav-link px-3 py-2">Directory</a>
+        <a href="profile.html" id="nav-profile" class="nav-link px-3 py-2 hidden">Profile</a>
+        <div class="relative">
+          <button id="nav-notif" onclick="openNotifications()" class="relative p-2 text-gray-500 hover:text-indigo-600 hidden">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+            <span id="notif-badge" class="hidden absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">0</span>
+          </button>
+          <div id="notif-panel" class="hidden absolute right-0 top-10 w-80 bg-white border rounded-xl shadow-xl max-h-96 overflow-y-auto z-50"></div>
+        </div>
+        <button id="nav-logout" onclick="signOut()" class="nav-link px-3 py-2 hidden">Sign Out</button>
+        <a href="login.html" id="nav-login" class="btn-primary ml-2 hidden">Sign In</a>
+        <a href="admin-members.html" id="nav-admin" class="hidden" style="margin-left:0.5rem;padding:0.35rem 0.875rem;font-size:0.8125rem;font-weight:700;color:#3730a3;background:#e0e7ff;border:2px solid #818cf8;border-radius:0.5rem;text-decoration:none;white-space:nowrap">&#9881; Admin</a>
+      </div>
+      <div class="md:hidden flex items-center">
+        <button onclick="toggleMobileMenu()" class="p-2 text-gray-500"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+      </div>
+    </div>
+  </div>
+  <div id="mobile-menu" class="hidden md:hidden border-t bg-white px-4 py-3 space-y-1">
+    <a href="index.html" class="block py-2 text-sm text-gray-600">Home</a>
+    <a href="directory.html" class="block py-2 text-sm text-gray-600">Directory</a>
+    <a href="calendar.html" class="block py-2 text-sm text-gray-600">Calendar</a>
+    <a href="admin-members.html" id="mob-admin" class="block py-2 text-sm text-indigo-700 font-medium hidden">Admin</a>
+    <a href="profile.html" id="mob-profile" class="block py-2 text-sm text-gray-600 hidden">Profile</a>
+    <button id="mob-logout" onclick="signOut()" class="block py-2 text-sm text-gray-600 hidden text-left w-full">Sign Out</button>
+    <a href="login.html" id="mob-login" class="block py-2 text-sm text-indigo-600 font-medium hidden">Sign In</a>
+  </div>
+</nav>
+<div id="admin-subnav"></div>
+
+<div class="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+  <h1 class="text-2xl font-bold text-gray-900 mb-6">🍎 Teachers</h1>
+  <div class="card">
+    <p class="text-sm text-gray-500 mb-4">Parents choose from this list when adding children. Changes take effect immediately.</p>
+    <div class="flex gap-2 mb-6">
+      <input id="new-teacher-input" type="text" class="form-input flex-1" placeholder="e.g. Ms. Smith" />
+      <button onclick="addTeacher()" class="btn-primary">Add Teacher</button>
+    </div>
+    <div id="teacher-list" class="space-y-2">
+      <p class="text-sm text-gray-400">Loading…</p>
+    </div>
+  </div>
+</div>
+
+<script src="js/auth.js"></script>
+<script src="js/admin-common.js"></script>
+<script>
+renderAdminNav('teachers');
+
+initAuth({
+  requireAuth: true, requireAdmin: true,
+  onReady: () => loadList()
+});
+
+async function loadList() {
+  const list = await getTeacherList();
+  const el = document.getElementById('teacher-list');
+  if (!list.length) { el.innerHTML = `<p class="text-sm text-gray-400">No teachers yet. Add one above.</p>`; return; }
+  el.innerHTML = list.map((t, i) => `
+    <div id="row-${i}" class="flex items-center gap-2 bg-gray-50 rounded-lg px-4 py-3">
+      <span id="label-${i}" class="text-sm font-medium text-gray-800 flex-1">${t}</span>
+      <input id="input-${i}" class="form-input flex-1 hidden" value="${t.replace(/"/g, '&quot;')}" />
+      <button id="edit-btn-${i}" onclick="startEdit(${i},'${t.replace(/'/g, '&#39;')}')" class="text-xs text-indigo-600 hover:underline">Edit</button>
+      <button id="save-btn-${i}" onclick="saveEdit(${i},'${t.replace(/'/g, '&#39;')}')" class="text-xs text-indigo-600 hover:underline hidden">Save</button>
+      <button id="cancel-btn-${i}" onclick="cancelEdit(${i},'${t.replace(/'/g, '&#39;')}')" class="text-xs text-gray-400 hover:underline hidden">Cancel</button>
+      <button onclick="removeTeacher('${t.replace(/'/g, '&#39;')}')" class="text-xs text-red-500 hover:underline">Remove</button>
+    </div>`).join('');
+}
+
+function startEdit(i, oldName) {
+  document.getElementById(`label-${i}`).classList.add('hidden');
+  document.getElementById(`input-${i}`).classList.remove('hidden');
+  document.getElementById(`edit-btn-${i}`).classList.add('hidden');
+  document.getElementById(`save-btn-${i}`).classList.remove('hidden');
+  document.getElementById(`cancel-btn-${i}`).classList.remove('hidden');
+  const input = document.getElementById(`input-${i}`);
+  input.focus();
+  input.select();
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') saveEdit(i, oldName);
+    if (e.key === 'Escape') cancelEdit(i, oldName);
+  });
+}
+
+function cancelEdit(i, oldName) {
+  document.getElementById(`label-${i}`).classList.remove('hidden');
+  document.getElementById(`input-${i}`).classList.add('hidden');
+  document.getElementById(`edit-btn-${i}`).classList.remove('hidden');
+  document.getElementById(`save-btn-${i}`).classList.add('hidden');
+  document.getElementById(`cancel-btn-${i}`).classList.add('hidden');
+  document.getElementById(`input-${i}`).value = oldName;
+}
+
+async function saveEdit(i, oldName) {
+  const newName = document.getElementById(`input-${i}`).value.trim();
+  if (!newName) { showToast('Name cannot be empty.', 'error'); return; }
+  if (newName === oldName) { cancelEdit(i, oldName); return; }
+
+  // Update teacher list
+  const list = await getTeacherList();
+  const updated = list.map(t => t === oldName ? newName : t);
+  await db.collection('config').doc('teachers').set({ list: updated });
+
+  // Update all children who had the old teacher name
+  const childSnap = await db.collection('children').where('teacher', '==', oldName).get();
+  const batch = db.batch();
+  childSnap.docs.forEach(d => batch.update(d.ref, { teacher: newName }));
+  if (!childSnap.empty) await batch.commit();
+
+  showToast(`Renamed to "${newName}"${childSnap.size ? ` · updated ${childSnap.size} child record(s)` : ''}.`);
+  loadList();
+}
+
+async function addTeacher() {
+  const input = document.getElementById('new-teacher-input');
+  const name = input.value.trim();
+  if (!name) { showToast('Enter a teacher name.', 'error'); return; }
+  const list = await getTeacherList();
+  if (list.includes(name)) { showToast('Already in the list.', 'error'); return; }
+  await db.collection('config').doc('teachers').set(
+    { list: firebase.firestore.FieldValue.arrayUnion(name) }, { merge: true }
+  );
+  input.value = '';
+  showToast(`${name} added.`);
+  loadList();
+}
+
+async function removeTeacher(name) {
+  if (!confirm(`Remove ${name}?`)) return;
+  await db.collection('config').doc('teachers').update({
+    list: firebase.firestore.FieldValue.arrayRemove(name)
+  });
+  showToast(`${name} removed.`);
+  loadList();
+}
+
+document.getElementById('new-teacher-input').addEventListener('keydown', e => { if (e.key === 'Enter') addTeacher(); });
+</script>
+</body>
+</html>

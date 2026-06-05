@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign In · NHE Korean Bilingual Program</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="js/config.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+
+<nav class="bg-white shadow-sm">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center">
+    <a href="index.html" class="flex items-center space-x-2">
+      <span class="text-xl">🐬</span>
+      <div>
+        <div class="text-sm font-bold text-indigo-700 leading-tight">Newport Heights Elementary</div>
+        <div class="text-xs text-gray-500 leading-tight">Korean Bilingual Program</div>
+      </div>
+    </a>
+  </div>
+</nav>
+
+<div class="flex-1 flex items-center justify-center p-4 py-12">
+  <div class="w-full max-w-md">
+    <!-- Toggle -->
+    <div class="flex bg-white rounded-xl shadow-sm border border-gray-200 p-1 mb-6">
+      <button id="tab-signin" onclick="showTab('signin')"
+        class="flex-1 py-2 rounded-lg text-sm font-medium transition-colors bg-indigo-600 text-white">
+        Sign In
+      </button>
+      <button id="tab-signup" onclick="showTab('signup')"
+        class="flex-1 py-2 rounded-lg text-sm font-medium transition-colors text-gray-500 hover:text-gray-700">
+        Create Account
+      </button>
+    </div>
+
+    <!-- Sign In -->
+    <div id="signin-panel" class="card">
+      <h2 class="text-xl font-bold text-gray-900 mb-1">Welcome back</h2>
+      <p class="text-sm text-gray-500 mb-6">Sign in to connect with KBP families.</p>
+      <div class="space-y-4">
+        <div>
+          <label class="form-label">Email</label>
+          <input id="si-email" type="email" class="form-input" placeholder="you@email.com" />
+        </div>
+        <div>
+          <label class="form-label">Password</label>
+          <input id="si-password" type="password" class="form-input" placeholder="••••••••" />
+        </div>
+        <div id="si-error" class="hidden text-sm text-red-600 bg-red-50 rounded-lg p-3"></div>
+        <button onclick="doSignIn()" class="btn-primary w-full py-2.5">Sign In</button>
+        <button onclick="doForgotPassword()" class="text-sm text-indigo-600 hover:underline w-full text-center">
+          Forgot password?
+        </button>
+      </div>
+    </div>
+
+    <!-- Sign Up -->
+    <div id="signup-panel" class="card hidden">
+      <h2 class="text-xl font-bold text-gray-900 mb-1">Join the community</h2>
+      <p class="text-sm text-gray-500 mb-6">Create your family account for the KBP directory.</p>
+      <div class="space-y-4">
+        <div>
+          <label class="form-label">Your Name <span class="text-red-500">*</span></label>
+          <input id="su-name" type="text" class="form-input" placeholder="Jane Kim" oninput="onEmailOrNameChange()" />
+        </div>
+        <div>
+          <label class="form-label">Email <span class="text-red-500">*</span></label>
+          <input id="su-email" type="email" class="form-input" placeholder="you@email.com" oninput="onEmailOrNameChange()" />
+        </div>
+        <div>
+          <label class="form-label">Password <span class="text-red-500">*</span></label>
+          <input id="su-password" type="password" class="form-input" placeholder="At least 6 characters" />
+        </div>
+        <div>
+          <label class="form-label">Confirm Password <span class="text-red-500">*</span></label>
+          <input id="su-password2" type="password" class="form-input" placeholder="••••••••" />
+        </div>
+
+        <!-- Students section (hidden for school staff) -->
+        <div id="children-section" class="border-t pt-4">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <p class="text-sm font-semibold text-gray-800">Your Students <span class="text-red-500">*</span></p>
+              <p class="text-xs text-gray-500">At least one student is required to join.</p>
+            </div>
+            <button type="button" onclick="addSignupChild()" class="btn-secondary btn-sm">+ Add Child</button>
+          </div>
+          <div id="signup-children" class="space-y-3"></div>
+        </div>
+
+        <div id="su-error" class="hidden text-sm text-red-600 bg-red-50 rounded-lg p-3"></div>
+        <button onclick="doSignUp()" class="btn-primary w-full py-2.5">Create Account</button>
+        <p class="text-xs text-gray-400 text-center">
+          By joining, you agree to share information with KBP families per your privacy settings.
+        </p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="js/auth.js"></script>
+<script>
+// If already logged in, redirect appropriately
+auth.onAuthStateChanged(async user => {
+  if (!user) return;
+  const snap = await db.collection('users').doc(user.uid).get();
+  if (snap.exists && snap.data().approved === false) {
+    window.location.href = 'pending.html';
+  } else if (snap.exists) {
+    window.location.href = 'index.html';
+  }
+});
+
+function showTab(tab) {
+  const isSignin = tab === 'signin';
+  document.getElementById('signin-panel').classList.toggle('hidden', !isSignin);
+  document.getElementById('signup-panel').classList.toggle('hidden', isSignin);
+
+  const active = 'bg-indigo-600 text-white';
+  const inactive = 'text-gray-500 hover:text-gray-700';
+  document.getElementById('tab-signin').className = `flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${isSignin ? active : inactive}`;
+  document.getElementById('tab-signup').className = `flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${!isSignin ? active : inactive}`;
+
+  if (!isSignin && document.getElementById('signup-children').children.length === 0) {
+    addSignupChild();
+  }
+}
+
+// --- Signup children helpers ---
+
+let signupChildCount = 0;
+let signupTeachers = [];
+
+async function loadSignupTeachers() {
+  try {
+    const snap = await db.collection('config').doc('teachers').get();
+    signupTeachers = snap.exists ? (snap.data().list || []) : [];
+  } catch (e) {
+    signupTeachers = [];
+  }
+}
+
+function isSchoolStaff(email) {
+  return email.endsWith('@bsd405.org') || email.endsWith('@bsd405.com');
+}
+
+function onEmailOrNameChange() {
+  const email = document.getElementById('su-email').value.trim();
+  const section = document.getElementById('children-section');
+  section.style.display = isSchoolStaff(email) ? 'none' : 'block';
+}
+
+function addSignupChild() {
+  const n = signupChildCount++;
+  const gradeOpts = ['Kindergarten','1st Grade','2nd Grade','3rd Grade','4th Grade','5th Grade']
+    .map(g => `<option>${g}</option>`).join('');
+  const teacherOpts = signupTeachers.map(t => `<option value="${t}">${t}</option>`).join('');
+
+  const div = document.createElement('div');
+  div.id = `sc-${n}`;
+  div.className = 'bg-gray-50 rounded-lg p-3 space-y-2 relative';
+  div.innerHTML = `
+    <button type="button" onclick="removeSignupChild(${n})"
+      class="absolute top-2 right-2 text-gray-400 hover:text-red-500 text-xs" title="Remove">✕</button>
+    <div class="grid grid-cols-2 gap-2">
+      <div>
+        <label class="form-label text-xs">First Name <span class="text-red-500">*</span></label>
+        <input type="text" id="sc-first-${n}" class="form-input text-sm" placeholder="First name" />
+      </div>
+      <div>
+        <label class="form-label text-xs">Last Name <span class="text-red-500">*</span></label>
+        <input type="text" id="sc-last-${n}" class="form-input text-sm" placeholder="Last name" />
+      </div>
+    </div>
+    <div class="grid grid-cols-2 gap-2">
+      <div>
+        <label class="form-label text-xs">Grade <span class="text-red-500">*</span></label>
+        <select id="sc-grade-${n}" class="form-select text-sm">
+          <option value="">Grade…</option>${gradeOpts}
+        </select>
+      </div>
+      <div>
+        <label class="form-label text-xs">Teacher</label>
+        <select id="sc-teacher-${n}" class="form-select text-sm">
+          <option value="">Teacher…</option>${teacherOpts}
+        </select>
+      </div>
+    </div>
+    <div>
+      <label class="form-label text-xs">Your Relationship <span class="text-red-500">*</span></label>
+      <input type="text" id="sc-rel-${n}" class="form-input text-sm" placeholder="e.g. Mom, Dad, Grandparent" />
+    </div>`;
+  document.getElementById('signup-children').appendChild(div);
+}
+
+function removeSignupChild(n) {
+  const container = document.getElementById('signup-children');
+  if (container.children.length <= 1) {
+    showToast('At least one student is required.', 'error'); return;
+  }
+  document.getElementById(`sc-${n}`).remove();
+}
+
+async function doSignIn() {
+  const email = document.getElementById('si-email').value.trim();
+  const pass = document.getElementById('si-password').value;
+  const errEl = document.getElementById('si-error');
+  errEl.classList.add('hidden');
+  try {
+    await auth.signInWithEmailAndPassword(email, pass);
+    window.location.href = 'index.html';
+  } catch (e) {
+    errEl.textContent = friendlyError(e.code);
+    errEl.classList.remove('hidden');
+  }
+}
+
+async function doSignUp() {
+  const name = document.getElementById('su-name').value.trim();
+  const email = document.getElementById('su-email').value.trim();
+  const pass = document.getElementById('su-password').value;
+  const pass2 = document.getElementById('su-password2').value;
+  const errEl = document.getElementById('su-error');
+  errEl.classList.add('hidden');
+
+  if (!name) { showErr(errEl, 'Please enter your name.'); return; }
+  if (pass !== pass2) { showErr(errEl, 'Passwords do not match.'); return; }
+  if (pass.length < 6) { showErr(errEl, 'Password must be at least 6 characters.'); return; }
+
+  // Collect children (skip validation for school staff)
+  const staff = isSchoolStaff(email);
+  const children = [];
+  if (!staff) {
+    const childEls = Array.from(document.getElementById('signup-children').children);
+    if (childEls.length === 0) { showErr(errEl, 'Please add at least one student.'); return; }
+    for (const el of childEls) {
+      const n = el.id.replace('sc-', '');
+      const first = document.getElementById(`sc-first-${n}`).value.trim();
+      const last  = document.getElementById(`sc-last-${n}`).value.trim();
+      const grade = document.getElementById(`sc-grade-${n}`).value;
+      const teacher = document.getElementById(`sc-teacher-${n}`).value.trim();
+      const relationship = document.getElementById(`sc-rel-${n}`).value.trim();
+      if (!first || !last) { showErr(errEl, 'Please enter first and last name for each student.'); return; }
+      if (!grade) { showErr(errEl, 'Please select a grade for each student.'); return; }
+      if (!relationship) { showErr(errEl, 'Please enter your relationship to each student.'); return; }
+      children.push({ first, last, grade, teacher, relationship });
+    }
+  }
+
+  try {
+    const cred = await auth.createUserWithEmailAndPassword(email, pass);
+    const uid = cred.user.uid;
+
+    // Check if admin pre-added this email — if so, auto-approve and clean up placeholder
+    let autoApproved = email === SITE_ADMIN_EMAIL;
+    let placeholder = null;
+    if (!autoApproved) {
+      try {
+        const snap = await db.collection('users')
+          .where('email', '==', email)
+          .where('adminAdded', '==', true).get();
+        if (!snap.empty) { autoApproved = true; placeholder = snap.docs[0]; }
+      } catch (e) { /* rule may not match — proceed without auto-approve */ }
+    }
+
+    // Create user doc FIRST (with empty childIds) so children rules can resolve the user context,
+    // and so a partial failure still leaves a visible pending record for admins to see.
+    await db.collection('users').doc(uid).set({
+      uid, email,
+      displayName: name,
+      phone: placeholder?.data().phone || '',
+      kakao: placeholder?.data().kakao || '',
+      city:  placeholder?.data().city  || '',
+      isAdmin: false, isSiteAdmin: false,
+      privacy: { name: true, email: false, phone: false, kakao: false, city: true },
+      childIds: [],
+      approved: autoApproved,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+
+    const childIds = [];
+    for (const c of children) {
+      const ref = await db.collection('children').add({
+        firstName: c.first, lastName: c.last, grade: c.grade,
+        teacher: c.teacher, relationship: c.relationship,
+        parentUids: [uid],
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+      childIds.push(ref.id);
+    }
+
+    if (childIds.length > 0) {
+      await db.collection('users').doc(uid).update({ childIds });
+    }
+
+    if (placeholder) {
+      try { await placeholder.ref.delete(); } catch (e) {}
+    }
+
+    window.location.href = autoApproved ? 'profile.html' : 'pending.html';
+  } catch (e) {
+    showErr(errEl, friendlyError(e.code));
+  }
+}
+
+async function doForgotPassword() {
+  const email = document.getElementById('si-email').value.trim();
+  if (!email) { showToast('Enter your email address first.', 'error'); return; }
+  try {
+    await auth.sendPasswordResetEmail(email);
+    showToast('Password reset email sent!');
+  } catch (e) {
+    showToast(friendlyError(e.code), 'error');
+  }
+}
+
+function showErr(el, msg) { el.textContent = msg; el.classList.remove('hidden'); }
+
+function friendlyError(code) {
+  const map = {
+    'auth/user-not-found': 'No account found with that email.',
+    'auth/wrong-password': 'Incorrect password.',
+    'auth/email-already-in-use': 'An account already exists with this email.',
+    'auth/invalid-email': 'Please enter a valid email address.',
+    'auth/weak-password': 'Password must be at least 6 characters.',
+    'auth/too-many-requests': 'Too many attempts. Please try again later.',
+    'auth/invalid-credential': 'Incorrect email or password.',
+  };
+  return map[code] || 'Something went wrong. Please try again.';
+}
+
+['si-email','si-password'].forEach(id =>
+  document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') doSignIn(); })
+);
+['su-name','su-email','su-password','su-password2'].forEach(id =>
+  document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') doSignUp(); })
+);
+
+loadSignupTeachers();
+</script>
+</body>
+</html>

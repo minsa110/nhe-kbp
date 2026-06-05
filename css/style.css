@@ -1,0 +1,218 @@
+/* Korean Bilingual Program — NHE */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+* { box-sizing: border-box; }
+body { font-family: 'Inter', 'Noto Sans KR', sans-serif; }
+
+/* ── Nav ─────────────────────────────────────────── */
+.nav-link {
+  color: #4b5563;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: color 0.15s;
+  padding: 0 0.25rem;
+  text-decoration: none;
+}
+.nav-link:hover { color: #4338ca; }
+.nav-link-active { color: #4338ca; }
+
+/* ── Buttons ─────────────────────────────────────── */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  background-color: #4f46e5;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  border: 2px solid #4338ca;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.btn-primary:hover { background-color: #4338ca; border-color: #3730a3; }
+.btn-primary:focus { outline: 2px solid #6366f1; outline-offset: 2px; }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  background-color: #fff;
+  color: #374151;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  border: 1.5px solid #d1d5db;
+  cursor: pointer;
+  transition: background-color 0.15s;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.btn-secondary:hover { background-color: #f9fafb; }
+.btn-secondary:focus { outline: 2px solid #6366f1; outline-offset: 2px; }
+
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  background-color: #dc2626;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  border: 2px solid #b91c1c;
+  cursor: pointer;
+  transition: background-color 0.15s;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.btn-danger:hover { background-color: #b91c1c; }
+.btn-danger:focus { outline: 2px solid #ef4444; outline-offset: 2px; }
+
+.btn-sm { padding: 0.375rem 0.75rem; font-size: 0.75rem; }
+
+/* ── Forms ───────────────────────────────────────── */
+.form-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.25rem;
+}
+.form-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1.5px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  color: #111827;
+  background: #fff;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.form-input:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+}
+.form-input::placeholder { color: #9ca3af; }
+.form-input[readonly] { background: #f9fafb; color: #6b7280; }
+
+.form-select {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1.5px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  background: #fff;
+  color: #111827;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  cursor: pointer;
+}
+.form-select:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+}
+
+/* ── Cards ───────────────────────────────────────── */
+.card {
+  background: #fff;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+  border: 1px solid #f3f4f6;
+  padding: 1.25rem;
+}
+
+/* ── Tabs ────────────────────────────────────────── */
+.tab-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #4b5563;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+.tab-btn:hover { color: #4f46e5; border-bottom-color: #a5b4fc; }
+.tab-btn.active { color: #4338ca; border-bottom-color: #4f46e5; }
+
+/* ── Privacy badge ───────────────────────────────── */
+.badge-public  { display:inline-flex; padding: 0.125rem 0.5rem; border-radius: 9999px; font-size:0.75rem; font-weight:500; background:#dcfce7; color:#166534; }
+.badge-private { display:inline-flex; padding: 0.125rem 0.5rem; border-radius: 9999px; font-size:0.75rem; font-weight:500; background:#f3f4f6; color:#4b5563; }
+
+/* ── Hero gradient ───────────────────────────────── */
+.hero-bg {
+  background: linear-gradient(135deg, #4338ca 0%, #3b82f6 60%, #0ea5e9 100%);
+}
+
+/* ── Announcement body links ─────────────────────── */
+.announcement-body a { color: #2563eb; text-decoration: underline; }
+
+/* ── Announcement card ───────────────────────────── */
+.announce-card {
+  background: #fff;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+  border: 1px solid #f3f4f6;
+  padding: 1.5rem;
+  transition: box-shadow 0.15s;
+}
+.announce-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+
+/* ── Spinner ─────────────────────────────────────── */
+.spinner {
+  display: inline-block;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-width: 2px;
+  border-style: solid;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Data table ──────────────────────────────────── */
+.data-table { width: 100%; font-size: 0.875rem; border-collapse: collapse; }
+.data-table th {
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.5rem 0.75rem;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+.data-table td { padding: 0.5rem 0.75rem; border-bottom: 1px solid #f3f4f6; color: #374151; }
+.data-table tr:hover td { background: #f9fafb; }
+
+/* ── FullCalendar custom ─────────────────────────── */
+.fc-event { cursor: pointer; }
+.fc-toolbar-title { font-size: 1.1rem !important; font-weight: 600 !important; }
+
+/* ── Responsive view-mode overrides ─────────────── */
+body.force-mobile .md\:flex   { display: none !important; }
+body.force-mobile .md\:grid   { display: block !important; }
+body.force-mobile .md\:hidden { display: flex !important; }
+body.force-mobile .sm\:grid-cols-2,
+body.force-mobile .lg\:grid-cols-3 { grid-template-columns: 1fr !important; }
+body.force-mobile .sm\:flex-row { flex-direction: column !important; }
+
+body.force-desktop #mobile-menu  { display: none !important; }
+body.force-desktop .md\:flex     { display: flex !important; }
+body.force-desktop .md\:hidden   { display: none !important; }
+body.force-desktop .sm\:grid-cols-2 { grid-template-columns: repeat(2, 1fr) !important; }
+body.force-desktop .lg\:grid-cols-3 { grid-template-columns: repeat(3, 1fr) !important; }

@@ -1,0 +1,24 @@
+// COPY THIS INTO: Firebase Console → Storage → Rules tab → Publish
+// Required only if you want image uploads in announcements.
+// First, enable Storage: Firebase Console → Storage → Get started
+// ──────────────────────────────────────────────────────────────────
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Announcement and event files (images + PDFs): public read, admins can upload
+    match /announcements/{allPaths=**} {
+      allow read:  if true;
+      allow write: if request.auth != null
+                   && request.resource.size < 10 * 1024 * 1024
+                   && (request.resource.contentType.matches('image/.*')
+                       || request.resource.contentType == 'application/pdf');
+    }
+    match /events/{allPaths=**} {
+      allow read:  if true;
+      allow write: if request.auth != null
+                   && request.resource.size < 10 * 1024 * 1024
+                   && (request.resource.contentType.matches('image/.*')
+                       || request.resource.contentType == 'application/pdf');
+    }
+  }
+}

@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Family Directory · NHE Korean Bilingual Program</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="js/config.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<!-- NAV -->
+<nav class="bg-white shadow-sm sticky top-0 z-40">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-between h-16">
+      <a href="index.html" class="flex items-center space-x-2">
+        <span class="text-xl">🐬</span>
+        <div>
+          <div class="text-sm font-bold text-indigo-700 leading-tight">Newport Heights Elementary</div>
+          <div class="text-xs text-gray-500 leading-tight">Korean Bilingual Program</div>
+        </div>
+      </a>
+      <div class="hidden md:flex items-center space-x-1">
+        <a href="announcements.html" class="nav-link px-3 py-2">Announcements</a>
+        <a href="calendar.html" class="nav-link px-3 py-2">Calendar</a>
+        <a href="directory.html" class="nav-link nav-link-active px-3 py-2">Directory</a>
+        <a href="profile.html" id="nav-profile" class="nav-link px-3 py-2 hidden">Profile</a>
+        <div class="relative">
+          <button id="nav-notif" onclick="openNotifications()" class="relative p-2 text-gray-500 hover:text-indigo-600 hidden">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+            </svg>
+            <span id="notif-badge" class="hidden absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">0</span>
+          </button>
+          <div id="notif-panel" class="hidden absolute right-0 top-10 w-80 bg-white border rounded-xl shadow-xl max-h-96 overflow-y-auto z-50"></div>
+        </div>
+        <button id="nav-logout" onclick="signOut()" class="nav-link px-3 py-2 hidden">Sign Out</button>
+        <a href="login.html" id="nav-login" class="btn-primary ml-2 hidden">Sign In</a>
+        <a href="admin-members.html" id="nav-admin" class="hidden" style="margin-left:0.5rem;padding:0.35rem 0.875rem;font-size:0.8125rem;font-weight:700;color:#3730a3;background:#e0e7ff;border:2px solid #818cf8;border-radius:0.5rem;text-decoration:none;white-space:nowrap">⚙ Admin</a>
+      </div>
+      <div class="md:hidden flex items-center">
+        <button onclick="toggleMobileMenu()" class="p-2 text-gray-500 hover:text-indigo-600">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+  <div id="mobile-menu" class="hidden md:hidden border-t bg-white px-4 py-3 space-y-1">
+    <a href="index.html" class="block py-2 text-sm text-gray-600">Home</a>
+    <a href="announcements.html" class="block py-2 text-sm text-gray-600">Announcements</a>
+    <a href="directory.html" class="block py-2 text-sm text-indigo-700 font-medium">Directory</a>
+    <a href="calendar.html" class="block py-2 text-sm text-gray-600">Calendar</a>
+    <a href="profile.html" id="mob-profile" class="block py-2 text-sm text-gray-600 hidden">Profile</a>
+    <button id="mob-logout" onclick="signOut()" class="block py-2 text-sm text-gray-600 hidden text-left w-full">Sign Out</button>
+    <a href="login.html" id="mob-login" class="block py-2 text-sm text-indigo-600 font-medium hidden">Sign In</a>
+    <a href="admin-members.html" id="mob-admin" class="hidden block py-2 text-sm font-bold text-indigo-700">⚙ Admin</a>
+  </div>
+</nav>
+
+<!-- Gate: login prompt -->
+<div id="login-gate" class="hidden max-w-xl mx-auto px-4 py-24 text-center">
+  <div class="text-5xl mb-4">🔒</div>
+  <h2 class="text-xl font-bold text-gray-900 mb-2">Members Only</h2>
+  <p class="text-gray-500 mb-6">The family directory is available to signed-in KBP families only.</p>
+  <a href="login.html" class="btn-primary">Sign In to View Directory</a>
+</div>
+
+<!-- Directory content -->
+<div id="directory-content" class="hidden max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+    <h1 class="text-2xl font-bold text-gray-900">Family Directory</h1>
+    <span id="family-count" class="text-sm text-gray-500"></span>
+  </div>
+
+  <!-- Filters -->
+  <div class="card mb-6">
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div>
+        <label class="form-label text-xs">Search by name</label>
+        <input id="filter-name" type="text" class="form-input" placeholder="Parent or child name…" oninput="applyFilters()" />
+      </div>
+      <div>
+        <label class="form-label text-xs">Grade</label>
+        <select id="filter-grade" class="form-select" onchange="applyFilters()">
+          <option value="">All grades</option>
+          <option>Kindergarten</option><option>1st Grade</option><option>2nd Grade</option>
+          <option>3rd Grade</option><option>4th Grade</option><option>5th Grade</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label text-xs">Teacher</label>
+        <select id="filter-teacher" class="form-select" onchange="applyFilters()">
+          <option value="">All teachers</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- View toggle -->
+  <div class="flex justify-end mb-4 gap-2">
+    <button id="view-grid-btn" onclick="setDirView('grid')" title="Grid view"
+      class="p-2 rounded-lg border border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
+      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+        <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+      </svg>
+    </button>
+    <button id="view-list-btn" onclick="setDirView('list')" title="List view"
+      class="p-2 rounded-lg border border-gray-300 text-gray-500 hover:bg-gray-50 transition-colors">
+      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/>
+      </svg>
+    </button>
+  </div>
+
+  <div id="families-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+  <div id="families-list" class="hidden"></div>
+  <p id="no-results" class="hidden text-center text-gray-400 py-12">No families match your filters.</p>
+</div>
+
+<footer class="mt-12 border-t bg-white">
+  <div class="max-w-6xl mx-auto px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-sm text-gray-400">
+    <span><a href="https://newportheights.bsd405.org/">Newport Heights Elementary</a> · Korean Bilingual Program</span>
+    <button onclick="toggleViewMode()" id="view-toggle-btn" class="text-indigo-500 hover:underline text-xs"></button>
+  </div>
+</footer>
+
+<script src="js/auth.js"></script>
+<script>
+initViewMode();
+
+let allFamilies = [];
+let dirView = 'grid';
+let isAdmin = false;
+
+initAuth({
+  onReady: async (user, userData) => {
+    if (!user) {
+      document.getElementById('login-gate').classList.remove('hidden');
+      return;
+    }
+    isAdmin = !!(userData && userData.isAdmin);
+    document.getElementById('directory-content').classList.remove('hidden');
+    await loadDirectory(userData);
+  }
+});
+
+async function loadDirectory(myData) {
+  const [usersSnap, childrenSnap] = await Promise.all([
+    db.collection('users').get(),
+    db.collection('children').get(),
+  ]);
+
+  const childMap = {};
+  childrenSnap.docs.forEach(d => { childMap[d.id] = d.data(); });
+
+  allFamilies = usersSnap.docs.map(d => {
+    const u = d.data();
+    const children = (u.childIds || []).map(cid => childMap[cid]).filter(Boolean);
+    return { uid: d.id, ...u, children };
+  }).sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''));
+
+  document.getElementById('family-count').textContent = `${allFamilies.length} contacts`;
+  applyFilters();
+
+  // Populate teacher dropdown separately — failure here won't break the directory
+  try {
+    const teacherSnap = await db.collection('config').doc('teachers').get();
+    const teachers = teacherSnap.exists ? (teacherSnap.data().list || []) : [];
+    const sel = document.getElementById('filter-teacher');
+    teachers.forEach(t => {
+      const o = document.createElement('option');
+      o.value = t; o.textContent = t;
+      sel.appendChild(o);
+    });
+  } catch (e) {
+    // Teacher list not available yet — filter shows "All teachers" only
+  }
+}
+
+function applyFilters() {
+  const nameQ = document.getElementById('filter-name').value.toLowerCase();
+  const gradeQ = document.getElementById('filter-grade').value;
+  const teacherQ = document.getElementById('filter-teacher').value;
+
+  const filtered = allFamilies.filter(f => {
+    const nameMatch = !nameQ ||
+      (f.displayName || '').toLowerCase().includes(nameQ) ||
+      (f.children || []).some(c => `${c.firstName} ${c.lastName}`.toLowerCase().includes(nameQ));
+    const gradeMatch = !gradeQ || (f.children || []).some(c => c.grade === gradeQ);
+    const teacherMatch = !teacherQ || (f.children || []).some(c => c.teacher === teacherQ);
+    return nameMatch && gradeMatch && teacherMatch;
+  });
+
+  renderGrid(filtered);
+  renderList(filtered);
+  document.getElementById('no-results').classList.toggle('hidden', filtered.length > 0);
+}
+
+function renderGrid(families) {
+  document.getElementById('families-grid').innerHTML = families.map(f => familyCard(f)).join('');
+}
+
+function renderList(families) {
+  const container = document.getElementById('families-list');
+  if (!families.length) { container.innerHTML = ''; return; }
+  container.innerHTML = `
+    <div class="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+      <table class="w-full text-sm border-collapse">
+        <thead class="bg-gray-50 border-b border-gray-200">
+          <tr>
+            <th class="text-left py-2.5 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Name</th>
+            <th class="text-left py-2.5 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Child</th>
+            <th class="text-left py-2.5 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Grade</th>
+            <th class="text-left py-2.5 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Teacher</th>
+            <th class="text-left py-2.5 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Email</th>
+            <th class="text-left py-2.5 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Phone</th>
+            <th class="text-left py-2.5 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Location</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${families.map(f => familyRow(f)).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function familyCard(f) {
+  const p = f.privacy || {};
+  const showName = isAdmin || p.name;
+  const name = showName ? (f.displayName || 'Anonymous') : 'Private';
+  const initials = name !== 'Private'
+    ? name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+    : '?';
+
+  const childrenHtml = (f.children || []).map((c, i) => {
+    const nameRel = [`${c.firstName} ${c.lastName}`.trim(), c.relationship].filter(Boolean).join(' · ');
+    const gradeBubble = c.grade
+      ? `<span style="display:inline-block;padding:0.15rem 0.6rem;background:#eef2ff;color:#4338ca;font-size:0.7rem;font-weight:500;border-radius:9999px">${c.grade}</span>`
+      : '';
+    const teacherBubble = c.teacher
+      ? `<span style="display:inline-block;padding:0.15rem 0.6rem;background:#f5f3ff;color:#6d28d9;font-size:0.7rem;font-weight:500;border-radius:9999px">${c.teacher}</span>`
+      : '';
+    return `<div${i > 0 ? ' style="margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid #f3f4f6"' : ''}>
+      <p class="text-xs text-gray-600">${nameRel}</p>
+      ${(gradeBubble || teacherBubble) ? `<div style="display:flex;flex-wrap:wrap;gap:0.25rem;margin-top:0.25rem">${gradeBubble}${teacherBubble}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  const contactParts = [];
+  if (isAdmin || p.email) contactParts.push(`<a href="mailto:${f.email}" class="text-xs text-indigo-600 hover:underline">${f.email}</a>`);
+  if ((isAdmin || p.phone) && f.phone) contactParts.push(`<span class="text-xs text-gray-500">${f.phone}</span>`);
+  if ((isAdmin || p.kakao) && f.kakao) contactParts.push(`<span class="text-xs text-gray-500">💬 ${f.kakao}</span>`);
+  if ((isAdmin || p.city) && f.city) contactParts.push(`<span class="text-xs text-gray-400">📍 ${f.city}</span>`);
+
+  const adminBadge = f.isSiteAdmin
+    ? `<span style="font-size:0.65rem;font-weight:700;background:#ede9fe;color:#6d28d9;padding:0.1rem 0.45rem;border-radius:9999px;letter-spacing:0.03em">SITE ADMIN</span>`
+    : f.isAdmin
+    ? `<span style="font-size:0.65rem;font-weight:700;background:#e0e7ff;color:#3730a3;padding:0.1rem 0.45rem;border-radius:9999px;letter-spacing:0.03em">ADMIN</span>`
+    : '';
+
+  return `
+    <div class="card hover:shadow-md transition-shadow">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 font-bold text-sm flex items-center justify-center shrink-0">
+          ${initials}
+        </div>
+        <div class="min-w-0 flex items-center gap-2 flex-wrap">
+          <p class="font-semibold text-gray-900 truncate">${name}</p>
+          ${adminBadge}
+        </div>
+      </div>
+      ${childrenHtml ? `<div class="mb-3">${childrenHtml}</div>` : ''}
+      ${contactParts.length ? `<div class="flex flex-col gap-1">${contactParts.join('')}</div>` : ''}
+    </div>`;
+}
+
+function familyRow(f) {
+  const p = f.privacy || {};
+  const showName = isAdmin || p.name;
+  const name = showName ? (f.displayName || 'Anonymous') : 'Private';
+
+  const children = f.children || [];
+  const childNames  = children.map(c => `${c.firstName} ${c.lastName}`.trim() || '—').join('<br>') || '—';
+  const childGrades = children.map(c => c.grade || '—').join('<br>') || '—';
+  const childTeachers = children.map(c => c.teacher || '—').join('<br>') || '—';
+
+  const emailVal = (isAdmin || p.email) ? f.email : '';
+  const emailHtml = emailVal
+    ? `<a href="mailto:${emailVal}" class="text-indigo-600 hover:underline">${emailVal}</a>`
+    : '—';
+  const phone = (isAdmin || p.phone) ? (f.phone || '—') : '—';
+  const city  = (isAdmin || p.city)  ? (f.city  || '—') : '—';
+
+  const adminBadge = f.isSiteAdmin
+    ? `<span style="font-size:0.65rem;font-weight:700;background:#ede9fe;color:#6d28d9;padding:0.1rem 0.45rem;border-radius:9999px">SITE ADMIN</span>`
+    : f.isAdmin
+    ? `<span style="font-size:0.65rem;font-weight:700;background:#e0e7ff;color:#3730a3;padding:0.1rem 0.45rem;border-radius:9999px">ADMIN</span>`
+    : '';
+
+  return `
+    <tr class="border-b border-gray-100 hover:bg-gray-50">
+      <td class="py-2.5 px-3 font-medium text-gray-900 whitespace-nowrap">${name} ${adminBadge}</td>
+      <td class="py-2.5 px-3 text-xs text-gray-700">${childNames}</td>
+      <td class="py-2.5 px-3 text-xs text-gray-500 whitespace-nowrap">${childGrades}</td>
+      <td class="py-2.5 px-3 text-xs text-gray-500">${childTeachers}</td>
+      <td class="py-2.5 px-3 text-xs">${emailHtml}</td>
+      <td class="py-2.5 px-3 text-xs text-gray-500 whitespace-nowrap">${phone}</td>
+      <td class="py-2.5 px-3 text-xs text-gray-400 whitespace-nowrap">${city !== '—' ? '📍 ' + city : '—'}</td>
+    </tr>`;
+}
+
+function setDirView(view) {
+  dirView = view;
+  document.getElementById('families-grid').classList.toggle('hidden', view !== 'grid');
+  document.getElementById('families-list').classList.toggle('hidden', view !== 'list');
+
+  const gridBtn = document.getElementById('view-grid-btn');
+  const listBtn = document.getElementById('view-list-btn');
+  const activeClass = 'border-indigo-600 bg-indigo-600 text-white';
+  const inactiveClass = 'border-gray-300 text-gray-500 hover:bg-gray-50';
+
+  gridBtn.className = `p-2 rounded-lg border transition-colors ${view === 'grid' ? activeClass : inactiveClass}`;
+  listBtn.className = `p-2 rounded-lg border transition-colors ${view === 'list' ? activeClass : inactiveClass}`;
+}
+
+function initViewMode() {
+  const mode = localStorage.getItem('viewMode') || 'auto';
+  applyViewMode(mode);
+}
+function toggleViewMode() {
+  const current = localStorage.getItem('viewMode') || 'auto';
+  const next = current === 'desktop' ? 'mobile' : 'desktop';
+  localStorage.setItem('viewMode', next);
+  applyViewMode(next);
+}
+function applyViewMode(mode) {
+  const btn = document.getElementById('view-toggle-btn');
+  if (mode === 'desktop') {
+    document.body.classList.add('force-desktop');
+    document.body.classList.remove('force-mobile');
+    if (btn) btn.textContent = 'Switch to Mobile View';
+  } else if (mode === 'mobile') {
+    document.body.classList.add('force-mobile');
+    document.body.classList.remove('force-desktop');
+    if (btn) btn.textContent = 'Switch to Desktop View';
+  } else {
+    document.body.classList.remove('force-desktop', 'force-mobile');
+    if (btn) btn.textContent = '';
+  }
+}
+</script>
+</body>
+</html>
