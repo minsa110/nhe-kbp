@@ -1,6 +1,3 @@
-# Firebase config (contains API keys)
-js/config.js
-
 # Claude Code session data
 .claude/
 
