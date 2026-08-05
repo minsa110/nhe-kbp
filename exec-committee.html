@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Exec Committee · NHE Korean Bilingual Program</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%90%AC</text></svg>" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="js/config.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<!-- NAV -->
+<nav class="bg-white shadow-sm sticky top-0 z-40">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-between h-16">
+      <a href="index.html" class="flex items-center space-x-2">
+        <span class="text-xl">🐬</span>
+        <div>
+          <div class="text-sm font-bold text-indigo-700 leading-tight">Newport Heights Elementary</div>
+          <div class="text-xs text-gray-500 leading-tight">Korean Bilingual Program</div>
+        </div>
+      </a>
+      <div class="hidden md:flex items-center space-x-1">
+        <a href="announcements.html" class="nav-link px-3 py-2">Announcements</a>
+        <a href="calendar.html" class="nav-link px-3 py-2">Calendar</a>
+        <a href="directory.html" class="nav-link px-3 py-2">Directory</a>
+        <a href="exec-committee.html" class="nav-link nav-link-active px-3 py-2">Exec Committee</a>
+        <a href="profile.html" id="nav-profile" class="nav-link px-3 py-2 hidden">Profile</a>
+        <div class="relative">
+          <button id="nav-notif" onclick="openNotifications()" class="relative p-2 text-gray-500 hover:text-indigo-600 hidden">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+            <span id="notif-badge" class="hidden absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">0</span>
+          </button>
+          <div id="notif-panel" class="hidden absolute right-0 top-10 w-80 bg-white border rounded-xl shadow-xl max-h-96 overflow-y-auto z-50"></div>
+        </div>
+        <button id="nav-logout" onclick="signOut()" class="nav-link px-3 py-2 hidden">Sign Out</button>
+        <a href="login.html" id="nav-login" class="btn-primary ml-2 hidden">Sign In</a>
+        <a href="admin-members.html" id="nav-admin" class="hidden" style="margin-left:0.5rem;padding:0.35rem 0.875rem;font-size:0.8125rem;font-weight:700;color:#3730a3;background:#e0e7ff;border:2px solid #818cf8;border-radius:0.5rem;text-decoration:none;white-space:nowrap">⚙ Admin</a>
+      </div>
+      <div class="md:hidden flex items-center">
+        <button onclick="toggleMobileMenu()" class="p-2 text-gray-500"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+      </div>
+    </div>
+  </div>
+  <div id="mobile-menu" class="hidden md:hidden border-t bg-white px-4 py-3 space-y-1">
+    <a href="announcements.html" class="block py-2 text-sm text-gray-600">Announcements</a>
+    <a href="calendar.html" class="block py-2 text-sm text-gray-600">Calendar</a>
+    <a href="directory.html" class="block py-2 text-sm text-gray-600">Directory</a>
+    <a href="exec-committee.html" class="block py-2 text-sm font-medium text-indigo-700">Exec Committee</a>
+    <a href="profile.html" id="mob-profile" class="block py-2 text-sm text-gray-600 hidden">Profile</a>
+    <button id="mob-logout" onclick="signOut()" class="block py-2 text-sm text-gray-600 hidden text-left w-full">Sign Out</button>
+    <a href="login.html" id="mob-login" class="block py-2 text-sm text-indigo-600 font-medium hidden">Sign In</a>
+    <a href="admin-members.html" id="mob-admin" class="hidden block py-2 text-sm font-bold text-indigo-700">⚙ Admin</a>
+  </div>
+</nav>
+
+<div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+  <h1 class="text-2xl font-bold text-gray-900 mb-1">Contact the KBP Executive Committee</h1>
+  <p class="text-sm text-gray-600 italic mb-6">
+    Have a question or need assistance? We'd love to hear from you. Please email us at
+    <a href="mailto:nhekbpexco@gmail.com" class="text-indigo-600 hover:underline">nhekbpexco@gmail.com</a>
+  </p>
+
+  <h2 class="text-base font-bold text-gray-900 mb-3">2026-2027 KBP Parent Executive Committee Members</h2>
+
+  <div class="overflow-hidden border border-gray-200 rounded-lg mb-8">
+    <table class="min-w-full divide-y divide-gray-200 text-sm">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-4 py-3 text-left font-semibold text-gray-700">Name</th>
+          <th class="px-4 py-3 text-left font-semibold text-gray-700">Position</th>
+          <th class="px-4 py-3 text-left font-semibold text-gray-700">Email Address</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-200 bg-white">
+        <tr>
+          <td class="px-4 py-2 text-gray-800">Shin La Shu</td>
+          <td class="px-4 py-2 text-gray-600">Chair</td>
+          <td class="px-4 py-2 text-gray-600"></td>
+        </tr>
+        <tr>
+          <td class="px-4 py-2 text-gray-800">Michelle Kim</td>
+          <td class="px-4 py-2 text-gray-600">Vice Chair</td>
+          <td class="px-4 py-2 text-gray-600"></td>
+        </tr>
+        <tr>
+          <td class="px-4 py-2 text-gray-800">Ryan Salinas</td>
+          <td class="px-4 py-2 text-gray-600">Secretary</td>
+          <td class="px-4 py-2 text-gray-600"></td>
+        </tr>
+        <tr>
+          <td class="px-4 py-2 text-gray-800">Jihee Choi</td>
+          <td class="px-4 py-2 text-gray-600">Event Coordinator</td>
+          <td class="px-4 py-2 text-gray-600"></td>
+        </tr>
+        <tr>
+          <td class="px-4 py-2 text-gray-800">Eunyoung Whittaker</td>
+          <td class="px-4 py-2 text-gray-600">Event Coordinator</td>
+          <td class="px-4 py-2 text-gray-600"></td>
+        </tr>
+        <tr>
+          <td class="px-4 py-2 text-gray-800">Soojin Min</td>
+          <td class="px-4 py-2 text-gray-600">Communications Lead</td>
+          <td class="px-4 py-2 text-gray-600"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="text-sm text-gray-700">
+    Join our <strong>KBP Community KakaoTalk group</strong> to connect with other families:
+    <span class="text-indigo-600 font-medium">LINK TBA</span>
+  </p>
+
+</div>
+
+<script>
+  auth.onAuthStateChanged(user => {
+    if (user) {
+      document.getElementById('nav-profile').classList.remove('hidden');
+      document.getElementById('mob-profile').classList.remove('hidden');
+      document.getElementById('nav-logout').classList.remove('hidden');
+      document.getElementById('mob-logout').classList.remove('hidden');
+      db.collection('users').doc(user.uid).get().then(doc => {
+        if (doc.exists && doc.data().role === 'admin') {
+          document.getElementById('nav-admin').classList.remove('hidden');
+          document.getElementById('mob-admin').classList.remove('hidden');
+        }
+      });
+    } else {
+      document.getElementById('nav-login').classList.remove('hidden');
+      document.getElementById('mob-login').classList.remove('hidden');
+    }
+  });
+
+  function signOut() { auth.signOut().then(() => { window.location.href = 'login.html'; }); }
+  function toggleMobileMenu() { document.getElementById('mobile-menu').classList.toggle('hidden'); }
+</script>
+</body>
+</html>
